@@ -38,6 +38,14 @@ ALLOWED_CLIENT_EFFECTS = {
     "mirror",
     "tiny",
     "glitch",
+    "sepia",
+    "gray",
+    "rainbow",
+    "wobble",
+    "comic",
+    "zoom",
+    "blur",
+    "flipv",
 }
 
 # ========================
@@ -708,6 +716,14 @@ CLIENT_SCRIPT_JS = """
         [/\\bImage\\b/gi, 'Image'],
         [/\\bBan\\b/gi, 'Bannir'],
         [/\\bUnban\\b/gi, 'Débannir'],
+        [/\\bSepia\\b/gi, 'Sépia'],
+        [/\\bGrayscale\\b/gi, 'Niveaux de gris'],
+        [/\\bRainbow\\b/gi, 'Arc-en-ciel'],
+        [/\\bWobble\\b/gi, 'Tangage'],
+        [/\\bComic Mode\\b/gi, 'Mode bande dessinée'],
+        [/\\bZoom Pop\\b/gi, 'Zoom pop'],
+        [/\\bBlur\\b/gi, 'Flou'],
+        [/\\bVertical Flip\\b/gi, 'Renversement vertical'],
         [/\\bActive\\b/gi, 'Actif'],
         [/\\bInactive\\b/gi, 'Inactif'],
         [/\\bUnknown\\b/gi, 'Inconnu'],
@@ -790,7 +806,7 @@ CLIENT_SCRIPT_JS = """
             frenchObserver = null;
         }
 
-        document.documentElement.classList.remove('client-party', 'client-glitch');
+        document.documentElement.classList.remove('client-party', 'client-glitch', 'client-rainbow', 'client-wobble');
         document.documentElement.style.filter = '';
         document.documentElement.style.transform = '';
         document.documentElement.style.transformOrigin = '';
@@ -834,6 +850,15 @@ CLIENT_SCRIPT_JS = """
             document.documentElement.style.transform = 'scale(0.88)';
             document.documentElement.style.transformOrigin = 'top center';
             document.documentElement.style.zoom = '0.9';
+        } else if (effect === 'sepia') {
+            document.documentElement.style.filter = 'sepia(1) saturate(1.25) contrast(1.05)';
+        } else if (effect === 'gray') {
+            document.documentElement.style.filter = 'grayscale(1) contrast(1.08)';
+        } else if (effect === 'blur') {
+            document.documentElement.style.filter = 'blur(1.5px) saturate(0.9)';
+        } else if (effect === 'flipv') {
+            document.documentElement.style.transform = 'scaleY(-1)';
+            document.documentElement.style.transformOrigin = 'center center';
         } else if (effect === 'party') {
             ensureStyle(`
                 @keyframes clientPartySpin {
@@ -859,6 +884,36 @@ CLIENT_SCRIPT_JS = """
                 }
             `);
             document.documentElement.classList.add('client-glitch');
+        } else if (effect === 'rainbow') {
+            ensureStyle(`
+                @keyframes clientRainbowPulse {
+                    0% { filter: hue-rotate(0deg) saturate(1.3); }
+                    100% { filter: hue-rotate(360deg) saturate(1.7); }
+                }
+                html.client-rainbow body {
+                    animation: clientRainbowPulse 1.2s linear infinite;
+                }
+            `);
+            document.documentElement.classList.add('client-rainbow');
+        } else if (effect === 'wobble') {
+            ensureStyle(`
+                @keyframes clientWobble {
+                    0% { transform: rotate(0deg) translate(0, 0); }
+                    25% { transform: rotate(0.6deg) translate(1px, -1px); }
+                    50% { transform: rotate(-0.6deg) translate(-1px, 1px); }
+                    75% { transform: rotate(0.4deg) translate(1px, 1px); }
+                    100% { transform: rotate(0deg) translate(0, 0); }
+                }
+                html.client-wobble body {
+                    animation: clientWobble 0.7s ease-in-out infinite;
+                }
+            `);
+            document.documentElement.classList.add('client-wobble');
+        } else if (effect === 'comic') {
+            document.documentElement.style.filter = 'contrast(1.5) saturate(1.8) brightness(1.05)';
+        } else if (effect === 'zoom') {
+            document.documentElement.style.transform = 'scale(1.08)';
+            document.documentElement.style.transformOrigin = 'top center';
         } else if (effect === 'french') {
             applyFrenchMode();
             frenchObserver = new MutationObserver(function() {

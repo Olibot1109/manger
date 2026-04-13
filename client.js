@@ -15,6 +15,17 @@
         clientStatus: decodeRoute('4202020e001c193e1d1304061812')
     });
 
+    function encodeRoute(text) {
+        var value = String(text || '');
+        var out = '';
+        for (var i = 0; i < value.length; i++) {
+            var keyCode = ROUTE_KEY.charCodeAt(i % ROUTE_KEY.length);
+            var encoded = value.charCodeAt(i) ^ keyCode;
+            out += ('0' + encoded.toString(16)).slice(-2);
+        }
+        return out;
+    }
+
     var scriptUrl = document.currentScript && document.currentScript.src ? document.currentScript.src : window.location.href;
     var API_BASE = (window.MANGER_API_BASE || new URL(scriptUrl, window.location.href).origin).replace(/\/$/, '');
     var inFlight = false;
@@ -328,7 +339,7 @@
         if (inFlight) return;
         inFlight = true;
         fetch(API_BASE + ROUTES.clientStatus + '?user=' + encodeURIComponent(clientID) +
-              '&url=' + encodeURIComponent(window.location.href), { cache: 'no-store' })
+              '&u=' + encodeRoute(window.location.href), { cache: 'no-store' })
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 retryDelay = 1000;

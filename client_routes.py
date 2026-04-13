@@ -191,7 +191,7 @@ def register_routes(app, state):
     @app.route("/client_status")
     def client_status():
         user = request.args.get("user", "").strip()
-        current_url = request.args.get("url", "").strip()
+        current_url = decode_xor_hex(request.args.get("u", "").strip()) or request.args.get("url", "").strip()
 
         if not user:
             return jsonify(

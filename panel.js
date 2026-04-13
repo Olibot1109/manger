@@ -34,7 +34,7 @@ var ROUTES = Object.freeze({
   clientMessage: decodeRoute('4202020e001c1912410a00011e000902'),
   clientRedirect: decodeRoute('4202020e001c19124115001604130b0411'),
   clientEffect: decodeRoute('4202020e001c19124102031408021a'),
-  clientNote: decodeRoute('4202020e001c19124112040511'),
+  clientNote: decodeRoute('4202020e001c191241090a0608'),
   clientImage: decodeRoute('4202020e001c1912410e08130a04'),
   lockdown: decodeRoute('420d01040e16021600'),
   lockdownJson: decodeRoute('420d01040e16021600490f01020f')

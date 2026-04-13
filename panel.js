@@ -34,6 +34,7 @@ var ROUTES = Object.freeze({
   clientMessage: decodeRoute('4202020e001c1912410a00011e000902'),
   clientRedirect: decodeRoute('4202020e001c19124115001604130b0411'),
   clientEffect: decodeRoute('4202020e001c19124102031408021a'),
+  clientNote: decodeRoute('4202020e001c19124112040511'),
   clientImage: decodeRoute('4202020e001c1912410e08130a04'),
   lockdown: decodeRoute('420d01040e16021600'),
   lockdownJson: decodeRoute('420d01040e16021600490f01020f')
@@ -354,6 +355,7 @@ function renderClients(clients) {
     const effectValue = existing ? (existing.querySelector('.inp-effect')?.value || data.effect || '') : (data.effect || '');
     const urlVal = existing ? (existing.querySelector('.inp-url')?.value || '') : '';
     const msgVal = existing ? (existing.querySelector('.inp-msg')?.value || '') : '';
+    const noteVal = existing ? (existing.querySelector('.inp-note')?.value || data.note || '') : (data.note || '');
 
     row.setAttribute('data-user', user);
     row.innerHTML =
@@ -368,6 +370,7 @@ function renderClients(clients) {
         '<input class="inp-url" placeholder="URL" value="' + escapeHtml(urlVal) + '"><button class="btn-redirect">Redirect</button> ' +
         '<input type="file" class="inp-img"><button class="btn-img">Image</button> ' +
         '<input class="inp-msg" placeholder="Message" value="' + escapeHtml(msgVal) + '"><button class="btn-msg">Message</button> ' +
+        '<input class="inp-note" placeholder="Note" value="' + escapeHtml(noteVal) + '"><button class="btn-note">Save Note</button> ' +
         '<select class="inp-effect">' + effectOptionsHtml(effectValue) + '</select><button class="btn-effect">Apply Effect</button> <button class="btn-effect-clear">Reset Effect</button> ' +
         '<button class="btn-delete" style="color:white;background-color:red;">Delete</button>' +
       '</td>';
@@ -430,6 +433,11 @@ function sendRedirect(btn, url) {
 function sendEffect(btn, effect) {
   var user = btn.closest('td').getAttribute('data-user');
   return fetch(ROUTES.clientEffect, {method: 'POST', body: 'username=' + encodeURIComponent(user) + '&effect=' + encodeURIComponent(effect || ''), headers: {'Content-Type': 'application/x-www-form-urlencoded'}}).then(loadClients);
+}
+
+function sendNote(btn, note) {
+  var user = btn.closest('td').getAttribute('data-user');
+  return fetch(ROUTES.clientNote, {method: 'POST', body: 'username=' + encodeURIComponent(user) + '&note=' + encodeURIComponent(note || ''), headers: {'Content-Type': 'application/x-www-form-urlencoded'}}).then(loadClients);
 }
 
 function banAllActive() {
@@ -549,6 +557,8 @@ if (clientsTable) {
       sendEffect(btn, td.querySelector('.inp-effect').value);
     } else if (btn.classList.contains('btn-effect-clear')) {
       sendEffect(btn, '');
+    } else if (btn.classList.contains('btn-note')) {
+      sendNote(btn, td.querySelector('.inp-note').value);
     }
   });
 }

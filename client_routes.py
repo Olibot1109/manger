@@ -148,6 +148,18 @@ def register_routes(app, state):
 
         return redirect(url_for("clients_index"))
 
+    @app.route("/clients/note", methods=["POST"])
+    def set_client_note():
+        username = request.form.get("username", "").strip()
+        note = request.form.get("note", "").strip()
+
+        if username:
+            with data_lock:
+                clients.setdefault(username, {})["note"] = note
+                save_json(clients_json_path, clients)
+
+        return redirect(url_for("clients_index"))
+
     @app.route("/client_script")
     def client_script_page():
         return render_template_string(CLIENT_SCRIPT_HTML)
@@ -200,6 +212,7 @@ def register_routes(app, state):
                     "redirect": None,
                     "image": None,
                     "message": None,
+                    "note": None,
                     "effect": None,
                     "last_ping": None,
                     "current_url": None,
@@ -213,6 +226,7 @@ def register_routes(app, state):
                     "redirect": None,
                     "image": None,
                     "message": None,
+                    "note": "",
                     "effect": "",
                     "last_ping": None,
                     "current_url": None,
@@ -232,6 +246,8 @@ def register_routes(app, state):
             if message_text:
                 clients[user]["message"] = None
 
+            note_text = status.get("note")
+
             last_ping = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
             clients[user]["last_ping"] = last_ping
             clients[user]["current_url"] = current_url or status.get("current_url")
@@ -247,6 +263,7 @@ def register_routes(app, state):
                 "redirect": redirect_url if not lockdown_active else lockdown_url,
                 "image": image_b64,
                 "message": message_text,
+                "note": note_text,
                 "effect": normalize_client_effect(status.get("effect")),
                 "last_ping": last_ping,
                 "current_url": clients[user]["current_url"],

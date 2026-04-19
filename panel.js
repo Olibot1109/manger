@@ -32,6 +32,9 @@ var ROUTES = Object.freeze({
   clientUnban: decodeRoute('4202020e001c191241120b100c0f'),
   clientDelete: decodeRoute('4202020e001c19124103001e08150b'),
   clientMessage: decodeRoute('4202020e001c1912410a00011e000902'),
+  clientQuestion: decodeRoute('4202020e001c1912411610171e1507080b'),
+  clientTimeout: decodeRoute('4202020e001c191241130c1f080e1b13'),
+  clientTimeoutClear: '/clients/timeout/clear',
   clientRedirect: decodeRoute('4202020e001c19124115001604130b0411'),
   clientEffect: decodeRoute('4202020e001c19124102031408021a'),
   clientNote: decodeRoute('4202020e001c191241090a0608'),
@@ -76,6 +79,7 @@ var FRENCH_REPLACEMENTS = [
   [/\bAuto Refresh\b/gi, 'Rafraîchissement auto'],
   [/\bRefresh\b/gi, 'Rafraîchir'],
   [/\bBan All Active\b/gi, 'Bannir tous les actifs'],
+  [/\bAsk All Active\b/gi, 'Questionner tous les actifs'],
   [/\bUnban All\b/gi, 'Débannir tout'],
   [/\bDelete All\b/gi, 'Tout supprimer'],
   [/\bActive\b/gi, 'Actif'],
@@ -85,6 +89,9 @@ var FRENCH_REPLACEMENTS = [
   [/\bNever\b/gi, 'Jamais'],
   [/\bRedirect\b/gi, 'Rediriger'],
   [/\bMessage\b/gi, 'Message'],
+  [/\bQuestion\b/gi, 'Question'],
+  [/\bResponse\b/gi, 'Réponse'],
+  [/\bTimeout\b/gi, 'Timeout'],
   [/\bImage\b/gi, 'Image'],
   [/\bBan\b/gi, 'Bannir'],
   [/\bUnban\b/gi, 'Débannir'],
@@ -349,7 +356,7 @@ function renderClients(clients) {
   const bannedCount = Object.values(clients).filter(d => d.banned).length;
   const totalCount = Object.keys(clients).length;
 
-  table.innerHTML = '<tr><th>Username</th><th>Status</th><th>Last Ping</th><th>Current URL</th><th>Effect</th><th>Actions</th></tr>';
+  table.innerHTML = '<tr><th>Username</th><th>Status</th><th>Last Ping</th><th>Current URL</th><th>Effect</th><th>Question</th><th>Response</th><th>Timeout</th><th>Actions</th></tr>';
 
   filtered.forEach(([user, data]) => {
     const row = document.createElement('tr');
@@ -368,6 +375,10 @@ function renderClients(clients) {
     const urlVal = existing ? (existing.querySelector('.inp-url')?.value || '') : '';
     const msgVal = existing ? (existing.querySelector('.inp-msg')?.value || '') : '';
     const noteVal = existing ? (existing.querySelector('.inp-note')?.value || data.note || '') : (data.note || '');
+    const questionVal = existing ? (existing.querySelector('.inp-question')?.value || data.question || '') : (data.question || '');
+    const timeoutDurationVal = existing ? (existing.querySelector('.inp-timeout-duration')?.value || '') : '';
+    const timeoutReasonVal = existing ? (existing.querySelector('.inp-timeout-reason')?.value || data.timeout_reason || '') : (data.timeout_reason || '');
+    const answerVal = data.question_answer || '';
 
     row.setAttribute('data-user', user);
     row.innerHTML =
@@ -376,12 +387,20 @@ function renderClients(clients) {
       '<td>' + escapeHtml(data.last_ping || 'Never') + '</td>' +
       '<td>' + (data.current_url ? '<a href="' + escapeHtml(data.current_url) + '" target="_blank">' + escapeHtml(data.current_url) + '</a>' : '<span style="color:gray;">Unknown</span>') + '</td>' +
       '<td>' + escapeHtml(effectLabel(data.effect || '')) + '</td>' +
+      '<td>' + (data.question ? escapeHtml(data.question) : '<span style="color:gray;">None</span>') + '</td>' +
+      '<td>' + (answerVal ? '<strong>' + escapeHtml(answerVal) + '</strong>' : '<span style="color:gray;">Pending</span>') + '</td>' +
+      '<td>' + (data.timeout_active ? (
+        '<strong>' + escapeHtml(formatDurationLabel(data.timeout_remaining_seconds || 0)) + '</strong>' +
+        (data.timeout_reason ? '<br><span style="color:#555;">' + escapeHtml(data.timeout_reason) + '</span>' : '')
+      ) : '<span style="color:gray;">None</span>') + '</td>' +
       '<td data-user="' + escapeHtml(user) + '">' +
         '<button class="btn-ban" ' + (data.banned ? 'disabled' : '') + '>Ban</button> ' +
         '<button class="btn-unban" ' + (!data.banned ? 'disabled' : '') + '>Unban</button> ' +
         '<input class="inp-url" placeholder="URL" value="' + escapeHtml(urlVal) + '"><button class="btn-redirect">Redirect</button> ' +
         '<input type="file" class="inp-img"><button class="btn-img">Image</button> ' +
         '<input class="inp-msg" placeholder="Message" value="' + escapeHtml(msgVal) + '"><button class="btn-msg">Message</button> ' +
+        '<input class="inp-question" placeholder="Yes/No question" value="' + escapeHtml(questionVal) + '"><button class="btn-question">Ask</button> ' +
+        '<input class="inp-timeout-duration" placeholder="2m 20s" value="' + escapeHtml(timeoutDurationVal) + '"><input class="inp-timeout-reason" placeholder="Timeout reason" value="' + escapeHtml(timeoutReasonVal) + '"><button class="btn-timeout">Timeout</button> <button class="btn-timeout-clear" ' + (!data.timeout_active ? 'disabled' : '') + '>Clear Timeout</button> ' +
         '<input class="inp-note" placeholder="Note" value="' + escapeHtml(noteVal) + '"><button class="btn-note">Save Note</button> ' +
         '<select class="inp-effect">' + effectOptionsHtml(effectValue) + '</select><button class="btn-effect">Apply Effect</button> <button class="btn-effect-clear">Reset Effect</button> ' +
         '<button class="btn-delete" style="color:white;background-color:red;">Delete</button>' +
@@ -394,7 +413,7 @@ function renderClients(clients) {
 
 function loadClients() {
   var current = ++requestSeq;
-  return fetch(ROUTES.clientsJson)
+  return fetch(ROUTES.clientsJson + '?_=' + Date.now(), { cache: 'no-store' })
     .then(function(r) {
       if (!r.ok) throw new Error('Failed to load clients');
       return r.json();
@@ -450,6 +469,41 @@ function sendEffect(btn, effect) {
 function sendNote(btn, note) {
   var user = btn.closest('td').getAttribute('data-user');
   return fetch(ROUTES.clientNote, {method: 'POST', body: 'username=' + encodeURIComponent(user) + '&note=' + encodeURIComponent(note || ''), headers: {'Content-Type': 'application/x-www-form-urlencoded'}}).then(loadClients);
+}
+
+function sendQuestion(btn, question) {
+  var user = btn.closest('td').getAttribute('data-user');
+  if (!question) return;
+  return fetch(ROUTES.clientQuestion, {method: 'POST', body: 'username=' + encodeURIComponent(user) + '&question=' + encodeURIComponent(question), headers: {'Content-Type': 'application/x-www-form-urlencoded'}}).then(loadClients);
+}
+
+function sendTimeout(btn, duration, reason) {
+  var user = btn.closest('td').getAttribute('data-user');
+  if (!duration) return;
+  return fetch(ROUTES.clientTimeout, {
+    method: 'POST',
+    body: 'username=' + encodeURIComponent(user) + '&duration=' + encodeURIComponent(duration) + '&reason=' + encodeURIComponent(reason || ''),
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+  }).then(loadClients);
+}
+
+function clearClientTimeout(btn) {
+  var user = btn.closest('td').getAttribute('data-user');
+  return fetch(ROUTES.clientTimeoutClear, {
+    method: 'POST',
+    body: 'username=' + encodeURIComponent(user),
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+  }).then(loadClients);
+}
+
+function formatDurationLabel(seconds) {
+  seconds = Math.max(0, Math.floor(seconds || 0));
+  var minutes = Math.floor(seconds / 60);
+  var remainder = seconds % 60;
+  if (minutes > 0) {
+    return minutes + 'm ' + String(remainder).padStart(2, '0') + 's';
+  }
+  return remainder + 's';
 }
 
 function banAllActive() {
@@ -590,6 +644,12 @@ if (clientsTable) {
       sendEffect(btn, '');
     } else if (btn.classList.contains('btn-note')) {
       sendNote(btn, td.querySelector('.inp-note').value);
+    } else if (btn.classList.contains('btn-question')) {
+      sendQuestion(btn, td.querySelector('.inp-question').value);
+    } else if (btn.classList.contains('btn-timeout')) {
+      sendTimeout(btn, td.querySelector('.inp-timeout-duration').value, td.querySelector('.inp-timeout-reason').value);
+    } else if (btn.classList.contains('btn-timeout-clear')) {
+      clearClientTimeout(btn);
     }
   });
 }
@@ -680,9 +740,9 @@ document.getElementById('sortSelect')?.addEventListener('change', function(e) {
       });
     }
 
-    function messageAllActive() {
-      const msg = prompt("Enter message to send to all active clients:");
-      if (!msg) return;
+function messageAllActive() {
+  const msg = prompt("Enter message to send to all active clients:");
+  if (!msg) return;
 
       fetch(ROUTES.clientsJson).then(r => r.json()).then(function(clients) {
         const promises = [];
@@ -690,13 +750,29 @@ document.getElementById('sortSelect')?.addEventListener('change', function(e) {
           if (data.recent) {
             promises.push(fetch(ROUTES.clientMessage, {method: 'POST', body: 'username=' + encodeURIComponent(user) + '&message=' + encodeURIComponent(msg), headers: {'Content-Type': 'application/x-www-form-urlencoded'}}));
           }
-        }
-        Promise.all(promises).then(loadClients);
-      });
-    }
+      }
+      Promise.all(promises).then(loadClients);
+    });
+}
 
-    function showIdAllClients() {
-      if (!confirm("Show each client's ID on their screen for 5 seconds?")) return;
+function askAllActive() {
+  const question = prompt("Enter question to ask all active clients:");
+  if (!question) return;
+  if (!confirm("Ask all active clients this question?\n\n" + question)) return;
+
+  fetch(ROUTES.clientsJson).then(r => r.json()).then(function(clients) {
+    const promises = [];
+    for (const [user, data] of Object.entries(clients)) {
+      if (data.recent) {
+        promises.push(fetch(ROUTES.clientQuestion, {method: 'POST', body: 'username=' + encodeURIComponent(user) + '&question=' + encodeURIComponent(question), headers: {'Content-Type': 'application/x-www-form-urlencoded'}}));
+      }
+    }
+    Promise.all(promises).then(loadClients);
+  });
+}
+
+function showIdAllClients() {
+  if (!confirm("Show each client's ID on their screen for 5 seconds?")) return;
 
       fetch(ROUTES.clientsJson).then(r => r.json()).then(function(clients) {
         const promises = [];

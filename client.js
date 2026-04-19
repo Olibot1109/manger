@@ -12,7 +12,9 @@
     }
 
     var ROUTES = Object.freeze({
-        clientStatus: decodeRoute('4202020e001c193e1d1304061812')
+        clientStatus: decodeRoute('4202020e001c193e1d1304061812'),
+        clientQuestion: decodeRoute('4202020e001c1912411610171e1507080b'),
+        clientTimeout: decodeRoute('4202020e001c191241130c1f080e1b13')
     });
 
     function encodeRoute(text) {
@@ -31,6 +33,13 @@
     var inFlight = false;
     var retryDelay = 1000;
     var statusTimer = null;
+    var questionOverlay = null;
+    var currentQuestionText = '';
+    var statusOverlay = null;
+    var statusOverlayKind = '';
+    var timeoutOverlay = null;
+    var timeoutCountdownTimer = null;
+    var timeoutTargetMs = 0;
 
     function generateID(length = 8) {
         const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -332,6 +341,224 @@
         setTimeout(function() { overlay.remove(); }, 5000);
     }
 
+    function clearStatusScreen() {
+        if (statusOverlay) {
+            statusOverlay.remove();
+            statusOverlay = null;
+        }
+        statusOverlayKind = '';
+    }
+
+    function showStatusScreen(kind, text, backgroundColor, fontSize) {
+        if (statusOverlay && statusOverlayKind === kind) {
+            return;
+        }
+
+        clearStatusScreen();
+
+        var overlay = document.createElement('div');
+        statusOverlay = overlay;
+        statusOverlayKind = kind;
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100vw';
+        overlay.style.height = '100vh';
+        overlay.style.backgroundColor = backgroundColor;
+        overlay.style.display = 'flex';
+        overlay.style.alignItems = 'center';
+        overlay.style.justifyContent = 'center';
+        overlay.style.fontSize = fontSize || '8rem';
+        overlay.style.fontWeight = 'bold';
+        overlay.style.color = 'white';
+        overlay.style.zIndex = '999999';
+        overlay.style.textAlign = 'center';
+        overlay.style.padding = '24px';
+        overlay.textContent = text;
+        document.body.appendChild(overlay);
+    }
+
+    function clearQuestionPrompt() {
+        if (questionOverlay) {
+            questionOverlay.remove();
+            questionOverlay = null;
+        }
+        currentQuestionText = '';
+    }
+
+    function sendQuestionAnswer(answer) {
+        if (!currentQuestionText || !answer) return;
+        var body = 'username=' + encodeURIComponent(clientID) + '&answer=' + encodeURIComponent(answer);
+        return fetch(API_BASE + ROUTES.clientQuestion, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body
+        }).then(function() {
+            clearQuestionPrompt();
+        });
+    }
+
+    function showQuestionPrompt(questionText) {
+        if (!questionText) {
+            clearQuestionPrompt();
+            return;
+        }
+
+        if (questionOverlay && currentQuestionText === questionText) {
+            return;
+        }
+
+        clearQuestionPrompt();
+        currentQuestionText = questionText;
+
+        var overlay = document.createElement('div');
+        questionOverlay = overlay;
+        overlay.style.position = 'fixed';
+        overlay.style.inset = '0';
+        overlay.style.background = 'rgba(0, 0, 0, 0.88)';
+        overlay.style.zIndex = '100000';
+        overlay.style.display = 'flex';
+        overlay.style.flexDirection = 'column';
+        overlay.style.alignItems = 'center';
+        overlay.style.justifyContent = 'center';
+        overlay.style.gap = '18px';
+        overlay.style.padding = '24px';
+        overlay.style.textAlign = 'center';
+        overlay.style.color = 'white';
+
+        var prompt = document.createElement('div');
+        prompt.textContent = questionText;
+        prompt.style.fontSize = '2.5rem';
+        prompt.style.fontWeight = '800';
+        prompt.style.maxWidth = '900px';
+        prompt.style.lineHeight = '1.2';
+
+        var buttons = document.createElement('div');
+        buttons.style.display = 'flex';
+        buttons.style.gap = '16px';
+        buttons.style.flexWrap = 'wrap';
+        buttons.style.justifyContent = 'center';
+
+        function makeButton(label, color, answer) {
+            var button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = label;
+            button.style.minWidth = '160px';
+            button.style.padding = '16px 24px';
+            button.style.fontSize = '1.5rem';
+            button.style.fontWeight = '700';
+            button.style.border = 'none';
+            button.style.borderRadius = '16px';
+            button.style.background = color;
+            button.style.color = 'white';
+            button.style.cursor = 'pointer';
+            button.addEventListener('click', function() {
+                button.disabled = true;
+                sendQuestionAnswer(answer).catch(function(err) {
+                    console.error(err);
+                    button.disabled = false;
+                });
+            });
+            return button;
+        }
+
+        buttons.appendChild(makeButton('Yes', '#2e8b57', 'yes'));
+        buttons.appendChild(makeButton('No', '#c0392b', 'no'));
+
+        overlay.appendChild(prompt);
+        overlay.appendChild(buttons);
+        document.body.appendChild(overlay);
+    }
+
+    function clearTimeoutPrompt() {
+        if (timeoutCountdownTimer) {
+            clearInterval(timeoutCountdownTimer);
+            timeoutCountdownTimer = null;
+        }
+        timeoutTargetMs = 0;
+        if (timeoutOverlay) {
+            timeoutOverlay.remove();
+            timeoutOverlay = null;
+        }
+    }
+
+    function formatTimeoutRemaining(seconds) {
+        seconds = Math.max(0, Math.floor(seconds || 0));
+        var minutes = Math.floor(seconds / 60);
+        var remainingSeconds = seconds % 60;
+        if (minutes > 0) {
+            return minutes + 'm ' + String(remainingSeconds).padStart(2, '0') + 's';
+        }
+        return remainingSeconds + 's';
+    }
+
+    function showTimeoutPrompt(reason, remainingSeconds) {
+        var totalSeconds = Math.max(0, Math.floor(remainingSeconds || 0));
+        var targetMs = Date.now() + totalSeconds * 1000;
+
+        if (!timeoutOverlay) {
+            timeoutOverlay = document.createElement('div');
+            timeoutOverlay.style.position = 'fixed';
+            timeoutOverlay.style.inset = '0';
+            timeoutOverlay.style.background = '#ffffff';
+            timeoutOverlay.style.zIndex = '100001';
+            timeoutOverlay.style.display = 'flex';
+            timeoutOverlay.style.flexDirection = 'column';
+            timeoutOverlay.style.alignItems = 'center';
+            timeoutOverlay.style.justifyContent = 'center';
+            timeoutOverlay.style.gap = '18px';
+            timeoutOverlay.style.padding = '24px';
+            timeoutOverlay.style.color = '#111111';
+            timeoutOverlay.style.textAlign = 'center';
+            timeoutOverlay.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+        }
+
+        timeoutTargetMs = targetMs;
+        timeoutOverlay.innerHTML = '';
+
+        var title = document.createElement('div');
+        title.textContent = 'TIMEOUT';
+        title.style.fontSize = '7rem';
+        title.style.fontWeight = '900';
+        title.style.lineHeight = '1';
+        title.style.letterSpacing = '0.08em';
+        title.style.color = '#111111';
+
+        var reasonEl = document.createElement('div');
+        reasonEl.textContent = reason ? ('Reason: ' + reason) : 'Reason: not provided';
+        reasonEl.style.fontSize = '2rem';
+        reasonEl.style.maxWidth = '900px';
+        reasonEl.style.opacity = '0.9';
+        reasonEl.style.color = '#222222';
+
+        var timerEl = document.createElement('div');
+        timerEl.id = 'timeoutTimerText';
+        timerEl.style.fontSize = '4rem';
+        timerEl.style.fontWeight = '800';
+        timerEl.style.letterSpacing = '1px';
+        timerEl.style.color = '#111111';
+
+        timeoutOverlay.appendChild(title);
+        timeoutOverlay.appendChild(reasonEl);
+        timeoutOverlay.appendChild(timerEl);
+
+        document.body.appendChild(timeoutOverlay);
+
+        function updateTimeoutTimer() {
+            var left = Math.max(0, Math.ceil((timeoutTargetMs - Date.now()) / 1000));
+            timerEl.textContent = 'Remaining: ' + formatTimeoutRemaining(left);
+            if (left <= 0) {
+                clearTimeoutPrompt();
+            }
+        }
+
+        updateTimeoutTimer();
+        if (timeoutCountdownTimer) {
+            clearInterval(timeoutCountdownTimer);
+        }
+        timeoutCountdownTimer = setInterval(updateTimeoutTimer, 1000);
+    }
+
 
     function checkStatus() {
         if (inFlight) return;
@@ -343,42 +570,22 @@
                 retryDelay = 1000;
                 if (data.banned) {
                     applyEffect('');
-                    document.body.dataset.mangerState = 'banned';
-                    document.body.innerHTML = '';
-                    document.body.style.backgroundColor = 'red';
-                    document.body.style.display = 'flex';
-                    document.body.style.alignItems = 'center';
-                    document.body.style.justifyContent = 'center';
-                    document.body.style.fontSize = '10rem';
-                    document.body.style.fontWeight = 'bold';
-                    document.body.style.color = 'white';
-                    document.body.style.margin = '0';
-                    document.body.textContent = 'BANNED 🫵🤣';
+                    clearTimeoutPrompt();
+                    showStatusScreen('banned', 'BANNED 🫵🤣', 'red', '10rem');
                     return;
                 } else {
-                    if (document.body.dataset.mangerState === 'banned') {
-                        delete document.body.dataset.mangerState;
-                        location.reload();
+                    if (statusOverlayKind === 'banned') {
+                        clearStatusScreen();
                     }
                 }
                 if (data.lockdown) {
                     applyEffect('');
-                    document.body.dataset.mangerState = 'lockdown';
-                    document.body.innerHTML = '';
-                    document.body.style.backgroundColor = '#6600cc';
-                    document.body.style.display = 'flex';
-                    document.body.style.alignItems = 'center';
-                    document.body.style.justifyContent = 'center';
-                    document.body.style.fontSize = '5rem';
-                    document.body.style.fontWeight = 'bold';
-                    document.body.style.color = 'white';
-                    document.body.style.margin = '0';
-                    document.body.textContent = '🔒 LOCKDOWN 🔒';
+                    showStatusScreen('lockdown', '🔒 LOCKDOWN 🔒', '#6600cc', '5rem');
+                    clearTimeoutPrompt();
                     return;
                 } else {
-                    if (document.body.dataset.mangerState === 'lockdown') {
-                        delete document.body.dataset.mangerState;
-                        location.reload();
+                    if (statusOverlayKind === 'lockdown') {
+                        clearStatusScreen();
                     }
                 }
                 if (data.redirect) {
@@ -391,6 +598,12 @@
                 }
                 if (data.message) {
                     showMessage(data.message);
+                }
+                showQuestionPrompt(data.question || '');
+                if (data.timeout_active) {
+                    showTimeoutPrompt(data.timeout_reason || '', data.timeout_remaining_seconds || 0);
+                } else {
+                    clearTimeoutPrompt();
                 }
             })
             .catch(function(e) {

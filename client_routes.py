@@ -2,6 +2,7 @@ from base64 import b64encode
 from datetime import datetime
 from html import escape
 from pathlib import Path
+import re
 import time
 import json
 
@@ -68,6 +69,29 @@ def register_routes(app, state):
         except ValueError:
             return value
 
+    def parse_duration_seconds(value):
+        text = (value or "").strip().lower()
+        if not text:
+            return 0
+        if text.isdigit():
+            return int(text)
+
+        total = 0
+        matched = False
+        for amount, unit in re.findall(r"(\d+)\s*([smhd])", text):
+            matched = True
+            amount = int(amount)
+            if unit == "s":
+                total += amount
+            elif unit == "m":
+                total += amount * 60
+            elif unit == "h":
+                total += amount * 3600
+            elif unit == "d":
+                total += amount * 86400
+
+        return total if matched and total > 0 else 0
+
     @app.route("/clients", methods=["GET"])
     def clients_index():
         return render_template_string(CLIENTS_HTML)
@@ -87,8 +111,35 @@ def register_routes(app, state):
                     recent = (now - last_dt).total_seconds() < 10
                 except ValueError:
                     recent = False
+
+            timeout_until = data.get("timeout_until")
+            timeout_active = False
+            timeout_remaining = None
+            if timeout_until:
+                try:
+                    timeout_remaining = max(0, int(timeout_until - time.time()))
+                    timeout_active = timeout_remaining > 0
+                except (TypeError, ValueError):
+                    timeout_until = None
+
+            if timeout_until and not timeout_active:
+                with data_lock:
+                    if user in clients:
+                        clients[user]["timeout_reason"] = None
+                        clients[user]["timeout_set_at"] = None
+                        clients[user]["timeout_until"] = None
+                        clients[user]["timeout_duration_seconds"] = None
+                        save_json(clients_json_path, clients)
+                timeout_remaining = 0
+
             clients_display[user] = {**data, "recent": recent}
-        return jsonify(clients_display)
+            clients_display[user]["timeout_remaining_seconds"] = timeout_remaining
+            clients_display[user]["timeout_active"] = timeout_active
+        resp = jsonify(clients_display)
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
+        return resp
 
     @app.route("/clients/ban", methods=["POST"])
     def ban_client():
@@ -164,6 +215,76 @@ def register_routes(app, state):
             with data_lock:
                 clients.setdefault(username, {})["message"] = message
                 save_json(clients_json_path, clients)
+
+        return redirect(url_for("clients_index"))
+
+    @app.route("/clients/question", methods=["POST"])
+    def send_question_to_client():
+        username = request.form.get("username", "").strip()
+        question = request.form.get("question", "").strip()
+        answer = request.form.get("answer", "").strip().lower()
+
+        if not username:
+            return redirect(url_for("clients_index"))
+
+        with data_lock:
+            client = clients.setdefault(username, {})
+            if question:
+                client["question"] = question
+                client["question_answer"] = None
+                client["question_asked_at"] = datetime.utcnow().strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+                client["question_answered_at"] = None
+                save_json(clients_json_path, clients)
+            elif answer in {"yes", "no"}:
+                client["question_answer"] = answer
+                client["question"] = None
+                client["question_answered_at"] = datetime.utcnow().strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                )
+                save_json(clients_json_path, clients)
+
+        return redirect(url_for("clients_index"))
+
+    @app.route("/clients/timeout", methods=["POST"])
+    def send_timeout_to_client():
+        username = request.form.get("username", "").strip()
+        duration = request.form.get("duration", "").strip()
+        reason = request.form.get("reason", "").strip()
+
+        if not username:
+            return redirect(url_for("clients_index"))
+
+        seconds = parse_duration_seconds(duration)
+        if seconds <= 0:
+            return redirect(url_for("clients_index"))
+
+        now = time.time()
+        with data_lock:
+            client = clients.setdefault(username, {})
+            client["timeout_reason"] = reason
+            client["timeout_set_at"] = now
+            client["timeout_until"] = now + seconds
+            client["timeout_duration_seconds"] = seconds
+            save_json(clients_json_path, clients)
+
+        return redirect(url_for("clients_index"))
+
+    @app.route("/clients/timeout/clear", methods=["POST"])
+    def clear_timeout_on_client():
+        username = request.form.get("username", "").strip()
+
+        if not username:
+            return redirect(url_for("clients_index"))
+
+        with data_lock:
+            client = clients.setdefault(username, {})
+            client["timeout_reason"] = None
+            client["timeout_set_at"] = None
+            client["timeout_until"] = None
+            client["timeout_duration_seconds"] = None
+            save_json(clients_json_path, clients)
 
         return redirect(url_for("clients_index"))
 
@@ -244,6 +365,44 @@ def register_routes(app, state):
                 with data_lock:
                     clients.setdefault(username, {})["message"] = message
                     save_json(clients_json_path, clients)
+        elif "question" in request.form:
+            question = request.form.get("question", "").strip()
+            with data_lock:
+                client = clients.setdefault(username, {})
+                if question:
+                    client["question"] = question
+                    client["question_answer"] = None
+                    client["question_asked_at"] = datetime.utcnow().strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    )
+                    client["question_answered_at"] = None
+                    save_json(clients_json_path, clients)
+        elif "answer" in request.form:
+            answer = request.form.get("answer", "").strip().lower()
+            if answer in {"yes", "no"}:
+                with data_lock:
+                    client = clients.setdefault(username, {})
+                    client["question_answer"] = answer
+                    client["question"] = None
+                    client["question_answered_at"] = datetime.utcnow().strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    )
+                    save_json(clients_json_path, clients)
+        elif "timeout" in request.form or "duration" in request.form:
+            duration = request.form.get("timeout", "").strip() or request.form.get(
+                "duration", ""
+            ).strip()
+            reason = request.form.get("reason", "").strip()
+            seconds = parse_duration_seconds(duration)
+            if seconds > 0:
+                now = time.time()
+                with data_lock:
+                    client = clients.setdefault(username, {})
+                    client["timeout_reason"] = reason
+                    client["timeout_set_at"] = now
+                    client["timeout_until"] = now + seconds
+                    client["timeout_duration_seconds"] = seconds
+                    save_json(clients_json_path, clients)
         else:
             url = (
                 decode_xor_hex(request.form.get("u", "").strip())
@@ -277,6 +436,16 @@ def register_routes(app, state):
                     "audio": None,
                     "message": None,
                     "note": None,
+                    "question": None,
+                    "question_answer": None,
+                    "question_asked_at": None,
+                    "question_answered_at": None,
+                    "timeout_reason": None,
+                    "timeout_set_at": None,
+                    "timeout_until": None,
+                    "timeout_duration_seconds": None,
+                    "timeout_remaining_seconds": None,
+                    "timeout_active": False,
                     "effect": None,
                     "last_ping": None,
                     "current_url": None,
@@ -292,13 +461,38 @@ def register_routes(app, state):
                     "audio": None,
                     "message": None,
                     "note": "",
+                    "question": None,
+                    "question_answer": None,
+                    "question_asked_at": None,
+                    "question_answered_at": None,
+                    "timeout_reason": None,
+                    "timeout_set_at": None,
+                    "timeout_until": None,
+                    "timeout_duration_seconds": None,
                     "effect": "",
                     "last_ping": None,
                     "current_url": None,
                 }
 
             status = clients[user]
-            
+
+            timeout_until = status.get("timeout_until")
+            timeout_active = False
+            timeout_remaining = None
+            if timeout_until:
+                try:
+                    timeout_remaining = max(0, int(timeout_until - time.time()))
+                    timeout_active = timeout_remaining > 0
+                except (TypeError, ValueError):
+                    timeout_until = None
+
+            if timeout_until and not timeout_active:
+                clients[user]["timeout_reason"] = None
+                clients[user]["timeout_set_at"] = None
+                clients[user]["timeout_until"] = None
+                clients[user]["timeout_duration_seconds"] = None
+                timeout_remaining = 0
+                save_json(clients_json_path, clients)
 
             redirect_url = status.get("redirect")
             if redirect_url:
@@ -318,6 +512,8 @@ def register_routes(app, state):
                 clients[user]["message"] = None
 
             note_text = status.get("note")
+            question_text = status.get("question")
+            question_answer = status.get("question_answer")
 
             last_ping = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
             clients[user]["last_ping"] = last_ping
@@ -336,6 +532,16 @@ def register_routes(app, state):
                 "audio": audio_b64,
                 "message": message_text,
                 "note": note_text,
+                "question": question_text,
+                "question_answer": question_answer,
+                "question_asked_at": status.get("question_asked_at"),
+                "question_answered_at": status.get("question_answered_at"),
+                "timeout_reason": status.get("timeout_reason"),
+                "timeout_set_at": status.get("timeout_set_at"),
+                "timeout_until": status.get("timeout_until"),
+                "timeout_duration_seconds": status.get("timeout_duration_seconds"),
+                "timeout_remaining_seconds": timeout_remaining,
+                "timeout_active": timeout_active,
                 "effect": normalize_client_effect(status.get("effect")),
                 "last_ping": last_ping,
                 "current_url": clients[user]["current_url"],

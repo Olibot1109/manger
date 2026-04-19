@@ -291,13 +291,11 @@
 
         var badge = document.createElement('div');
         badge.id = 'clientIdBadge';
-        badge.textContent = 'ID: ' + clientID;
+        badge.textContent = clientID;
         badge.style.position = 'fixed';
         badge.style.right = '10px';
         badge.style.bottom = '10px';
         badge.style.padding = '4px 8px';
-        badge.style.borderRadius = '6px';
-        badge.style.background = 'rgba(0, 0, 0, 0.45)';
         badge.style.color = '#ff4d4d';
         badge.style.fontSize = '12px';
         badge.style.fontWeight = '700';

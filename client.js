@@ -284,6 +284,37 @@
     }
     document.title = clientID;
 
+    function showClientIdBadge() {
+        var existing = document.getElementById('clientIdBadge');
+        if (existing) return;
+        if (!document.body) return;
+
+        var badge = document.createElement('div');
+        badge.id = 'clientIdBadge';
+        badge.textContent = 'ID: ' + clientID;
+        badge.style.position = 'fixed';
+        badge.style.right = '10px';
+        badge.style.bottom = '10px';
+        badge.style.padding = '4px 8px';
+        badge.style.borderRadius = '6px';
+        badge.style.background = 'rgba(0, 0, 0, 0.45)';
+        badge.style.color = '#ff4d4d';
+        badge.style.fontSize = '12px';
+        badge.style.fontWeight = '700';
+        badge.style.fontFamily = 'monospace';
+        badge.style.lineHeight = '1';
+        badge.style.zIndex = '100002';
+        badge.style.pointerEvents = 'none';
+        badge.style.userSelect = 'none';
+        document.body.appendChild(badge);
+    }
+
+    if (document.body) {
+        showClientIdBadge();
+    } else {
+        document.addEventListener('DOMContentLoaded', showClientIdBadge, { once: true });
+    }
+
     function showFullScreenImage(imageUrl) {
         const old = document.getElementById("imageOverlay");
         if (old) old.remove();

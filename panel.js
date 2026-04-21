@@ -51,7 +51,7 @@ var ROUTES = Object.freeze({
   clientEffect: '/clients/effect',
   clientNote: '/clients/note',
   clientImage: '/clients/image',
-  lockdown: '/lockdown',
+  lockdown: '/',
   lockdownJson: '/lockdown.json'
 });
 
@@ -325,6 +325,7 @@ function unbanAll() {
 }
 
 function deleteAll() {
+  if (!pass('deleteAll')) return;
   if (!confirm('Delete ALL clients? This cannot be undone!')) return;
   Promise.all(Object.keys(clientState.clients).map(function(user) {
     return fetch(ROUTES.clientDelete, {method: 'POST', body: 'username=' + encodeURIComponent(user), headers: {'Content-Type': 'application/x-www-form-urlencoded'}});
@@ -370,6 +371,7 @@ function disableLockdown() {
 }
 
 function promptLockdown() {
+  
   var duration = prompt("Enter lockdown duration in minutes (leave empty for indefinite):", "7");
   if (duration === null) return;
   toggleLockdown(duration || '');

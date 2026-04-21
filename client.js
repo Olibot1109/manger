@@ -54,14 +54,11 @@
          if (stored) {
              skippedPollIds = JSON.parse(stored);
          }
-     } catch (e) {
-         skippedPollIds = [];
-     }
-     var skippedPollIds = [];
+      } catch (e) {
+          skippedPollIds = [];
+      }
 
-     const SKIPPED_POLLS_KEY = 'manger_skipped_polls';
-
-    // Audit helper: send client-side events to server audit log
+     // Audit helper: send client-side events to server audit log
     function sendAudit(action, target, details, success) {
       var body = JSON.stringify({
         performer: clientID,

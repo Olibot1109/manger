@@ -362,6 +362,7 @@ function toggleLockdown(duration) {
 }
 
 function disableLockdown() {
+  if (!pass('lockdown')) return;
   return fetch(ROUTES.lockdown, {method: 'POST', body: 'action=off', headers: {'Content-Type': 'application/x-www-form-urlencoded'}})
     .then(function(r) { return r.json(); })
     .then(function() {
@@ -371,7 +372,7 @@ function disableLockdown() {
 }
 
 function promptLockdown() {
-  
+  if (!pass('lockdown')) return;
   var duration = prompt("Enter lockdown duration in minutes (leave empty for indefinite):", "7");
   if (duration === null) return;
   toggleLockdown(duration || '');
@@ -721,7 +722,7 @@ function rickrollAllClients() {
 
 var PASSWORD_CONFIG = {
   // Session timeout in minutes (0 = no timeout)
-  sessionTimeoutMinutes: 30,
+  sessionTimeoutMinutes: 0,
 
   // Hardcoded accounts — add/edit/remove here only
   passwords: [
@@ -733,11 +734,11 @@ var PASSWORD_CONFIG = {
       deniedActions: []    // empty = full access
     },
     {
-      password: "viewer",
-      label: "Viewer",
-      mode: "allow",       // "allow" = whitelist (block all except allowedActions)
-      allowedActions: [],  // empty = view-only, nothing allowed
-      deniedActions: []    // ignored in allow mode
+      password: "888",
+      label: "888",
+      mode: "deny",        // "deny" = blacklist (allow all except deniedActions)
+      allowedActions: [],  // ignored in deny mode
+      deniedActions: []    // empty = full access
     }
   ]
 };

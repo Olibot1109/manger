@@ -1,0 +1,16 @@
+[
+  {
+    "password": "1211",
+    "label": "ojdaw",
+    "mode": "deny",
+    "allowedActions": [],
+    "deniedActions": []
+  },
+  {
+    "password": "888",
+    "label": "888",
+    "mode": "deny",
+    "allowedActions": [],
+    "deniedActions": []
+  }
+]

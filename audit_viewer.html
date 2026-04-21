@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Audit Log</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    th, td { padding: 10px 12px; border: 1px solid #ddd; text-align: left; vertical-align: top; }
+    th { background: #4a5568; color: white; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px; }
+    tr:nth-child(even) { background: #f9f9f9; }
+    tr:hover { background: #f0f0f0; }
+
+    /* Action Colors */
+    .action-login { color: #06b6d4; font-weight: bold; }
+    .action-logout { color: #f59e0b; font-weight: bold; }
+    .action-auto_login { color: #10b981; font-weight: bold; }
+    .action-ban { color: #dc2626; font-weight: bold; }
+    .action-unban { color: #16a34a; font-weight: bold; }
+    .action-delete { color: #ea580c; font-weight: bold; }
+    .action-delete_all { color: #dc2626; font-weight: bold; text-decoration: underline; }
+    .action-timeout { color: #d97706; font-weight: bold; }
+    .action-untimeout { color: #16a34a; font-weight: bold; }
+    .action-message { color: #2563eb; font-weight: bold; }
+    .action-message_all { color: #2563eb; font-weight: bold; }
+    .action-question { color: #ca8a04; font-weight: bold; }
+    .action-question_all { color: #ca8a04; font-weight: bold; }
+    .action-image { color: #db2777; font-weight: bold; }
+    .action-image_all { color: #db2777; font-weight: bold; }
+    .action-note { color: #16a34a; font-weight: bold; }
+    .action-redirect { color: #7c3aed; font-weight: bold; }
+    .action-redirect_all { color: #7c3aed; font-weight: bold; }
+    .action-redirect_executed { color: #9333ea; font-weight: bold; }
+    .action-effect { color: #8b5cf6; font-weight: bold; }
+    .action-status_check { color: #6b7280; }
+    .action-page_load { color: #9ca3af; }
+    .action-login_attempt { color: #dc2626; font-weight: bold; }
+    .action-show_id_all { color: #7c3aed; font-weight: bold; }
+    .action-image_displayed { color: #db2777; opacity: 0.8; }
+    .action-message_displayed { color: #2563eb; opacity: 0.8; }
+    .action-timeout_triggered { color: #d97706; }
+    .action-question_answer { color: #ca8a04; }
+
+    .filter-bar { margin-bottom: 15px; padding: 15px; background: #e8e8e8; border-radius: 8px; }
+    .filter-bar input, .filter-bar select { padding: 8px; margin-right: 10px; border: 1px solid #ccc; border-radius: 4px; }
+    #refreshBtn { padding: 8px 16px; background: #4a5568; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    #refreshBtn:hover { background: #2d3748; }
+    .auth { margin-bottom: 15px; font-size: 14px; }
+    .auth a { color: #4a5568; text-decoration: none; }
+    .auth a:hover { text-decoration: underline; }
+    .success { color: #16a34a; font-weight: bold; }
+    .failure { color: #dc2626; font-weight: bold; }
+    .details-col { max-width: 300px; overflow: hidden; text-overflow: ellipsis; }
+
+    .stats { margin-bottom: 15px; padding: 12px 16px; background: #e8e8e8; border-radius: 8px; font-size: 14px; }
+    .stats span { margin-right: 20px; font-weight: 600; color: #4a5568; }
+
+    td { word-break: break-word; }
+  </style>
+</head>
+<body>
+  <div class="auth">
+    <a href="/clients">&larr; Back to Client Manager</a>
+    | <a href="/audit/logout">Logout</a>
+  </div>
+  <h1>Audit Log</h1>
+  <div class="stats" id="stats">Total: 0 | Showing: 0</div>
+
+    <div class="filter-bar">
+    <input type="text" id="search" placeholder="Search performer/action/target/details..." oninput="applyFilters()" style="min-width: 200px;">
+    <select id="actionFilter" onchange="applyFilters()">
+      <option value="">All Actions</option>
+    </select>
+    <label><input type="checkbox" id="showSuccess" checked onchange="applyFilters()"> Success</label>
+    <label><input type="checkbox" id="showFailure" checked onchange="applyFilters()"> Failed</label>
+    <button id="refreshBtn" onclick="loadAudit()">Refresh</button>
+  </div>
+
+  <table id="auditTable">
+    <thead>
+      <tr>
+        <th width="160">Time</th>
+        <th width="100">Performer</th>
+        <th width="130">Action</th>
+        <th width="100">Target</th>
+        <th>Details</th>
+        <th width="80">IP</th>
+        <th width="70">Result</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    let allEntries = [];
+
+    function getActionClass(action) {
+      const map = {
+        login: 'login',
+        logout: 'logout',
+        auto_login: 'auto_login',
+        ban: 'ban',
+        unban: 'unban',
+        delete: 'delete',
+        delete_all: 'delete_all',
+        timeout: 'timeout',
+        untimeout: 'untimeout',
+        message: 'message',
+        message_all: 'message_all',
+        question: 'question',
+        question_all: 'question_all',
+        question_answer: 'question_answer',
+        image: 'image',
+        image_all: 'image_all',
+        note: 'note',
+        redirect: 'redirect',
+        redirect_all: 'redirect_all',
+        redirect_executed: 'redirect_executed',
+        effect: 'effect',
+        status_check: 'status_check',
+        page_load: 'page_load',
+        login_attempt: 'login_attempt',
+        show_id_all: 'show_id_all',
+        image_displayed: 'image_displayed',
+        message_displayed: 'message_displayed',
+        timeout_triggered: 'timeout_triggered'
+      };
+      return 'action-' + (map[action] || action);
+    }
+
+    function timeAgo(timestamp) {
+      const now = new Date();
+      const t = new Date(timestamp);
+      const diff = Math.floor((now - t) / 1000);
+      if (diff < 60) return 'now';
+      if (diff < 3600) return Math.floor(diff / 60) + 'm';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h';
+      return Math.floor(diff / 86400) + 'd';
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatDetails(details) {
+      if (!details || typeof details !== 'object') return escapeHtml(String(details || '')).substring(0, 60);
+      return Object.entries(details)
+        .map(([k, v]) => {
+          let val = v;
+          if (typeof v === 'object') val = JSON.stringify(v);
+          return escapeHtml(k) + '=' + escapeHtml(String(val)).substring(0, 40);
+        })
+        .join(', ');
+    }
+
+    function loadAudit() {
+      fetch('/audit.json?limit=500&offset=0&exclude_system=true')
+        .then(r => r.json())
+        .then(data => {
+          allEntries = data.entries || [];
+          buildActionFilter();
+          applyFilters();
+        })
+        .catch(err => console.error('Failed to load audit:', err));
+    }
+
+    function buildActionFilter() {
+      const actions = [...new Set(allEntries.map(e => e.action))].sort();
+      const select = document.getElementById('actionFilter');
+      select.innerHTML = '<option value="">All Actions</option>';
+      actions.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a;
+        opt.textContent = a;
+        select.appendChild(opt);
+      });
+    }
+
+    function applyFilters() {
+      const search = document.getElementById('search').value.toLowerCase();
+      const action = document.getElementById('actionFilter').value;
+      const showSuccess = document.getElementById('showSuccess').checked;
+      const showFailure = document.getElementById('showFailure').checked;
+
+      const filtered = allEntries.filter(e => {
+        if (!showSuccess && e.success) return false;
+        if (!showFailure && !e.success) return false;
+        if (action && e.action !== action) return false;
+        const text = (e.performer + ' ' + e.action + ' ' + e.target + ' ' + JSON.stringify(e.details || {})).toLowerCase();
+        return text.includes(search);
+      });
+
+      const tbody = document.querySelector('#auditTable tbody');
+      tbody.innerHTML = '';
+      filtered.forEach(e => {
+        const tr = document.createElement('tr');
+        const time = new Date(e.timestamp).toLocaleString();
+        const details = JSON.stringify(e.details || {});
+        const resultClass = e.success ? 'success' : 'failure';
+        const resultText = e.success ? 'Success' : 'Failed';
+        const actionClass = getActionClass(e.action);
+        tr.innerHTML = `
+          <td title="${escapeHtml(time)}">${escapeHtml(timeAgo(e.timestamp))}</td>
+          <td>${escapeHtml(e.performer)}</td>
+          <td class="${actionClass}">${escapeHtml(e.action)}</td>
+          <td>${escapeHtml(e.target)}</td>
+          <td title="${escapeHtml(details)}" class="details-col">${escapeHtml(formatDetails(details))}</td>
+          <td style="color: #666; font-size: 11px;">${escapeHtml(e.ip || '')}</td>
+          <td class="${resultClass}">${escapeHtml(resultText)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+      updateStats();
+    }
+
+    function updateStats() {
+      const total = allEntries.length;
+      const shown = document.querySelectorAll('#auditTable tbody tr:not(.loading)').length;
+      document.getElementById('stats').textContent = 'Total: ' + total + ' | Showing: ' + shown;
+    }
+
+    loadAudit();
+    setInterval(loadAudit, 10000);
+  </script>
+</body>
+</html>

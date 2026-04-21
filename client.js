@@ -30,16 +30,54 @@
 
     var scriptUrl = document.currentScript && document.currentScript.src ? document.currentScript.src : window.location.href;
     var API_BASE = (window.MANGER_API_BASE || new URL(scriptUrl, window.location.href).origin).replace(/\/$/, '');
-    var inFlight = false;
-    var retryDelay = 1000;
-    var statusTimer = null;
-    var questionOverlay = null;
-    var currentQuestionText = '';
-    var statusOverlay = null;
-    var statusOverlayKind = '';
-    var timeoutOverlay = null;
-    var timeoutCountdownTimer = null;
-    var timeoutTargetMs = 0;
+     var inFlight = false;
+     var retryDelay = 1000;
+     var statusTimer = null;
+     var questionOverlay = null;
+     var currentQuestionText = '';
+     var statusOverlay = null;
+     var statusOverlayKind = '';
+     var timeoutOverlay = null;
+     var timeoutCountdownTimer = null;
+     var timeoutTargetMs = 0;
+
+     // Polls state (managed separately)
+     var polls = [];
+     var currentPollIndex = 0;
+     var pollOverlay = null;
+     var skippedPollIds = [];
+     const SKIPPED_POLLS_KEY = 'manger_skipped_polls';
+
+     // Load skipped polls from storage
+     try {
+         const stored = localStorage.getItem(SKIPPED_POLLS_KEY);
+         if (stored) {
+             skippedPollIds = JSON.parse(stored);
+         }
+     } catch (e) {
+         skippedPollIds = [];
+     }
+     var skippedPollIds = [];
+
+     const SKIPPED_POLLS_KEY = 'manger_skipped_polls';
+
+    // Audit helper: send client-side events to server audit log
+    function sendAudit(action, target, details, success) {
+      var body = JSON.stringify({
+        performer: clientID,
+        action: action,
+        target: target || 'system',
+        details: details || {},
+        success: success !== false ? true : false
+      });
+      try {
+        fetch(API_BASE + '/audit/log', {
+          method: 'POST',
+          body: body,
+          headers: {'Content-Type': 'application/json'}
+        }).catch(function(){});
+      } catch(e) {}
+    }
 
     function generateID(length = 8) {
         const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -307,10 +345,431 @@
         document.body.appendChild(badge);
     }
 
-    if (document.body) {
-        showClientIdBadge();
-    } else {
-        document.addEventListener('DOMContentLoaded', showClientIdBadge, { once: true });
+     if (document.body) {
+         showClientIdBadge();
+     } else {
+         document.addEventListener('DOMContentLoaded', showClientIdBadge, { once: true });
+     }
+
+     // ========================
+     // POLLS
+     // ========================
+      function renderPolls(pollsData) {
+          // Get un-voted polls from server
+          const unvoted = (pollsData || []).filter(poll => {
+              const hasVoted = poll.voters && poll.voters.includes(clientID);
+              return !hasVoted;
+          });
+
+          // Get skipped polls that are still in the server response (still active)
+          const skipped = unvoted.filter(p => skippedPollIds.includes(p.id));
+
+          // New unskipped polls
+          const newPolls = unvoted.filter(p => !skippedPollIds.includes(p.id));
+
+          // Merge: show new polls first, then skipped ones (queue order)
+          polls = [...newPolls, ...skipped];
+
+          // If overlay currently showing and we still have polls, just update list
+          if (pollOverlay && document.body.contains(pollOverlay) && polls.length > 0) {
+              return;
+          }
+
+          currentPollIndex = 0;
+          if (polls.length > 0) {
+              showNextPoll();
+          } else {
+              if (pollOverlay) {
+                  pollOverlay.remove();
+                  pollOverlay = null;
+              }
+          }
+      }
+
+     function showNextPoll() {
+         // Clear existing poll overlay
+         if (pollOverlay) {
+             pollOverlay.remove();
+             pollOverlay = null;
+         }
+
+         // If all polls shown or no polls, nothing to do
+         if (currentPollIndex >= polls.length) {
+             currentPollIndex = 0; // Reset for next cycle
+             return;
+         }
+
+         const poll = polls[currentPollIndex];
+         currentPollIndex++;
+
+         // Create full-screen overlay
+         pollOverlay = document.createElement('div');
+         pollOverlay.className = 'poll-overlay';
+         pollOverlay.style.cssText = `
+           position: fixed;
+           inset: 0;
+           background: linear-gradient(135deg, rgba(10,10,20,0.96) 0%, rgba(20,15,40,0.97) 100%);
+           z-index: 100010;
+           display: flex;
+           flex-direction: column;
+           align-items: center;
+           justify-content: center;
+           gap: 28px;
+           padding: 40px 24px;
+           text-align: center;
+           color: #f0f0f0;
+           font-family: Georgia, 'Times New Roman', serif;
+           backdrop-filter: blur(8px);
+         `;
+
+         // Title with nice vintage badge
+         const title = document.createElement('div');
+         title.innerHTML = `
+           <div style="
+             display: inline-block;
+             padding: 6px 18px;
+             background: linear-gradient(90deg, #d4af37, #f7e7ce 50%, #d4af37);
+             background-size: 200% auto;
+             animation: shimmer 3s linear infinite;
+             border-radius: 20px;
+             font-family: 'Georgia', serif;
+             font-size: 0.85rem;
+             font-weight: 600;
+             letter-spacing: 2px;
+             text-transform: uppercase;
+             color: #1a1a2e;
+             margin-bottom: 8px;
+             box-shadow: 0 2px 8px rgba(212, 175, 55, 0.3);
+           ">
+             Your Opinion Matters
+           </div>
+         `;
+
+         // Progress indicator
+         const progress = document.createElement('div');
+         progress.style.cssText = `
+           display: flex;
+           gap: 6px;
+           align-items: center;
+           margin-bottom: 4px;
+         `;
+         progress.innerHTML = `
+           <div style="
+             font-size: 0.75rem;
+             color: rgba(255,255,255,0.5);
+             letter-spacing: 1px;
+             text-transform: uppercase;
+           ">Poll ${currentPollIndex} of ${polls.length}</div>
+         `;
+
+         // Question - styled like a beautiful display
+         const question = document.createElement('div');
+         question.className = 'poll-question';
+         question.innerHTML = poll.question
+           .split('\n')
+           .map(line => `<div style="line-height: 1.35;">${escapeHtml(line)}</div>`)
+           .join('');
+         question.style.cssText = `
+           font-size: clamp(1.5rem, 5vw, 2.75rem);
+           font-weight: 700;
+           color: #fff;
+           max-width: ${poll.question.length > 100 ? '800px' : '700px'};
+           line-height: 1.3;
+           margin: 0;
+           text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+           letter-spacing: -0.02em;
+         `;
+
+         // Options container
+         const optionsContainer = document.createElement('div');
+         optionsContainer.className = 'poll-options';
+         optionsContainer.style.cssText = `
+           display: flex;
+           flex-direction: column;
+           gap: 14px;
+           max-width: 580px;
+           width: 100%;
+           margin-top: 8px;
+         `;
+
+         const totalVotes = Object.keys(poll.votes || {}).length;
+
+         poll.options.forEach((opt, idx) => {
+             const count = Object.values(poll.votes || {}).filter(v => v === opt).length;
+             const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+
+             const optionBtn = document.createElement('button');
+             optionBtn.className = 'poll-option-btn';
+             optionBtn.textContent = opt;
+             optionBtn.setAttribute('data-count', count);
+             optionBtn.setAttribute('data-pct', pct);
+
+             // Natural-looking gradient buttons with subtle texture
+             const gradients = [
+               'linear-gradient(135deg, #8b7355 0%, #a0826d 50%, #8b7355 100%)',
+               'linear-gradient(135deg, #6b8e6b 0%, #87a878 50%, #6b8e6b 100%)',
+               'linear-gradient(135deg, #7a5c8a 0%, #9b7ab2 50%, #7a5c8a 100%)',
+               'linear-gradient(135deg, #5c7a7a 0%, #78a0a0 50%, #5c7a7a 100%)',
+             ];
+             const gradient = gradients[idx % gradients.length];
+
+             optionBtn.style.cssText = `
+               position: relative;
+               padding: 20px 36px;
+               font-family: 'Georgia', serif;
+               font-size: 1.15rem;
+               font-weight: 600;
+               font-style: italic;
+               letter-spacing: 0.02em;
+               line-height: 1.4;
+               border: none;
+               border-radius: 8px;
+               background: ${gradient};
+               color: #fff;
+               text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+               cursor: pointer;
+               transition: all 0.25s ease-out;
+               box-shadow:
+                 inset 0 1px 0 rgba(255,255,255,0.15),
+                 0 4px 12px rgba(0,0,0,0.25),
+                 0 1px 3px rgba(0,0,0,0.1);
+               overflow: hidden;
+               isolation: isolate;
+             `;
+
+             // Subtle noise texture overlay
+             const texture = document.createElement('div');
+             texture.style.cssText = `
+               position: absolute;
+               inset: 0;
+               opacity: 0.06;
+               pointer-events: none;
+               background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+               mix-blend-mode: overlay;
+             `;
+             optionBtn.appendChild(texture);
+
+             // Vote count badge
+             const badge = document.createElement('div');
+             badge.className = 'vote-badge';
+             badge.innerHTML = `${count} votes · ${pct}%`;
+             badge.style.cssText = `
+               position: absolute;
+               top: 8px;
+               right: 12px;
+               font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+               font-size: 0.7rem;
+               font-weight: 500;
+               font-style: normal;
+               letter-spacing: 0.5px;
+               text-transform: uppercase;
+               color: rgba(255,255,255,0.65);
+               background: rgba(0,0,0,0.2);
+               padding: 3px 8px;
+               border-radius: 10px;
+               backdrop-filter: blur(4px);
+             `;
+             optionBtn.appendChild(badge);
+
+             optionBtn.addEventListener('mouseenter', () => {
+                 optionBtn.style.transform = 'translateY(-2px) scale(1.005)';
+                 optionBtn.style.boxShadow = '0 8px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2)';
+             });
+
+             optionBtn.addEventListener('mouseleave', () => {
+                 optionBtn.style.transform = 'translateY(0) scale(1)';
+                 optionBtn.style.boxShadow = 'inset 0 1px 0 rgba(255,255,255,0.15), 0 4px 12px rgba(0,0,0,0.25), 0 1px 3px rgba(0,0,0,0.1)';
+             });
+
+             optionBtn.addEventListener('click', () => {
+                 // Disable all buttons
+                 document.querySelectorAll('.poll-option-btn').forEach(btn => {
+                   btn.style.pointerEvents = 'none';
+                   btn.style.opacity = '0.65';
+                 });
+                 votePoll(poll.id, opt);
+             });
+
+             optionsContainer.appendChild(optionBtn);
+         });
+
+         // Skip/later button
+         const skipBtn = document.createElement('button');
+         skipBtn.textContent = 'Remind Me Later';
+         skipBtn.className = 'poll-skip-btn';
+         skipBtn.style.cssText = `
+           margin-top: 6px;
+           padding: 8px 20px;
+           font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+           font-size: 0.85rem;
+           font-weight: 500;
+           letter-spacing: 0.3px;
+           border: 1px solid rgba(255,255,255,0.18);
+           border-radius: 16px;
+           background: rgba(255,255,255,0.06);
+           color: rgba(255,255,255,0.6);
+           cursor: pointer;
+           transition: all 0.2s ease-out;
+           backdrop-filter: blur(4px);
+         `;
+         skipBtn.addEventListener('mouseenter', () => {
+             skipBtn.style.background = 'rgba(255,255,255,0.1)';
+             skipBtn.style.color = 'rgba(255,255,255,0.85)';
+             skipBtn.style.borderColor = 'rgba(255,255,255,0.3)';
+         });
+         skipBtn.addEventListener('mouseleave', () => {
+             skipBtn.style.background = 'rgba(255,255,255,0.06)';
+             skipBtn.style.color = 'rgba(255,255,255,0.6)';
+             skipBtn.style.borderColor = 'rgba(255,255,255,0.18)';
+         });
+          skipBtn.addEventListener('click', () => {
+              if (pollOverlay) {
+                  pollOverlay.remove();
+                  pollOverlay = null;
+              }
+              // Add current poll to skipped queue
+              const pollId = poll.id;
+              if (!skippedPollIds.includes(pollId)) {
+                  skippedPollIds.push(pollId);
+                  try {
+                      localStorage.setItem(SKIPPED_POLLS_KEY, JSON.stringify(skippedPollIds));
+                  } catch (e) {}
+              }
+              // Move this poll to end of current polls array (so it goes to back of queue)
+              const currentIdx = currentPollIndex - 1;
+              if (currentIdx >= 0 && currentIdx < polls.length) {
+                  const [skipped] = polls.splice(currentIdx, 1);
+                  polls.push(skipped);
+                  currentPollIndex = currentIdx; // reset to point at the next poll
+              }
+              showNextPoll();
+          });
+
+         // Assemble
+         pollOverlay.appendChild(title);
+         pollOverlay.appendChild(progress);
+         pollOverlay.appendChild(question);
+         pollOverlay.appendChild(optionsContainer);
+         pollOverlay.appendChild(skipBtn);
+
+         document.body.appendChild(pollOverlay);
+     }
+
+      function votePoll(pollId, option) {
+          fetch(API_BASE + '/polls/vote', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({
+                  poll_id: pollId,
+                  option: option,
+                  voter: clientID
+              })
+          })
+          .then(r => r.json())
+          .then(data => {
+              if (data.ok) {
+                  // Remove this poll from local lists (voted)
+                  polls = polls.filter(p => p.id !== pollId);
+                  // Also remove from skipped queue if present
+                  skippedPollIds = skippedPollIds.filter(id => id !== pollId);
+                  try {
+                      localStorage.setItem(SKIPPED_POLLS_KEY, JSON.stringify(skippedPollIds));
+                  } catch (e) {}
+                  // Decrement index because removal shifts array
+                  currentPollIndex = Math.max(0, currentPollIndex - 1);
+                  showVoteConfirmation(() => {
+                      showNextPoll();
+                  });
+              } else {
+                  alert('Failed to vote');
+              }
+          })
+          .catch(err => {
+              console.error('Vote failed:', err);
+          });
+      }
+
+     function showVoteConfirmation(onComplete) {
+       const overlay = document.createElement('div');
+       overlay.id = 'voteConfirmation';
+       overlay.style.cssText = `
+         position: fixed;
+         inset: 0;
+         background: radial-gradient(circle at center, rgba(0,0,0,0.88) 0%, rgba(10,8,20,0.96) 100%);
+         z-index: 100020;
+         display: flex;
+         align-items: center;
+         justify-content: center;
+         font-family: 'Georgia', serif;
+         backdrop-filter: blur(4px);
+       `;
+
+       const content = document.createElement('div');
+       content.style.cssText = `
+         text-align: center;
+         color: #f5f5f0;
+         animation: confirmSlideIn 0.35s ease-out;
+       `;
+
+       content.innerHTML = `
+         <div style="
+           width: 90px;
+           height: 90px;
+           margin: 0 auto 20px;
+           border-radius: 50%;
+           background: linear-gradient(135deg, #2a5c2a, #3a8c3a);
+           display: flex;
+           align-items: center;
+           justify-content: center;
+           box-shadow: 0 4px 14px rgba(46, 160, 69, 0.35), inset 0 2px 4px rgba(255,255,255,0.15);
+           border: 2px solid rgba(255,255,255,0.12);
+         ">
+           <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));">
+             <polyline points="20 6 9 17 4 12"></polyline>
+           </svg>
+         </div>
+         <div style="font-size: 1.7rem; font-weight: 700; letter-spacing: 0.04em; text-shadow: 0 1px 2px rgba(0,0,0,0.4);">Your vote was counted</div>
+         <div style="margin-top: 6px; font-size: 0.9rem; color: rgba(255,255,255,0.55); font-style: italic;">Thank you for sharing your opinion</div>
+       `;
+
+       overlay.appendChild(content);
+       document.body.appendChild(overlay);
+
+       // Ensure keyframes exist
+       if (!document.getElementById('poll-confirm-styles')) {
+           const style = document.createElement('style');
+           style.id = 'poll-confirm-styles';
+           style.textContent = `
+             @keyframes confirmSlideIn {
+               from { opacity: 0; transform: translateY(12px) scale(0.96); }
+               to { opacity: 1; transform: translateY(0) scale(1); }
+             }
+           `;
+           document.head.appendChild(style);
+       }
+
+       // Fade out after 2 seconds
+       setTimeout(() => {
+         overlay.style.transition = 'opacity 0.32s ease';
+         overlay.style.opacity = '0';
+         setTimeout(() => {
+           overlay.remove();
+           if (typeof onComplete === 'function') onComplete();
+         }, 340);
+       }, 2000);
+     }
+
+     window.votePoll = votePoll;
+
+
+     function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     function showFullScreenImage(imageUrl) {
@@ -418,6 +877,8 @@
     function sendQuestionAnswer(answer) {
         if (!currentQuestionText || !answer) return;
         var body = 'username=' + encodeURIComponent(clientID) + '&answer=' + encodeURIComponent(answer);
+        // Audit the answer submission
+        sendAudit('question_answer', 'system', {question: currentQuestionText.substring(0, 100), answer: answer}, true);
         return fetch(API_BASE + ROUTES.clientQuestion, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -589,73 +1050,111 @@
     }
 
 
-    function checkStatus() {
-        if (inFlight) return;
-        inFlight = true;
-        fetch(API_BASE + ROUTES.clientStatus + '?user=' + encodeURIComponent(clientID) +
-              '&u=' + encodeRoute(window.location.href), { cache: 'no-store' })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                retryDelay = 1000;
-                if (data.banned) {
-                    applyEffect('');
-                    clearTimeoutPrompt();
-                    showStatusScreen('banned', 'BANNED 🫵🤣', 'red', '10rem');
-                    return;
-                } else {
-                    if (statusOverlayKind === 'banned') {
-                        clearStatusScreen();
-                    }
-                }
-                if (data.lockdown) {
-                    applyEffect('');
-                    showStatusScreen('lockdown', 'LOCKDOWN', '#6600cc', '5rem');
-                    clearTimeoutPrompt();
-                    return;
-                } else {
-                    if (statusOverlayKind === 'lockdown') {
-                        clearStatusScreen();
-                    }
-                }
-                if (data.redirect) {
-                    window.location.href = data.redirect;
-                    return;
-                }
-                applyEffect(data.effect);
-                if (data.image) {
-                    showFullScreenImage(data.image);
-                }
-                if (data.message) {
-                    showMessage(data.message);
-                }
-                showQuestionPrompt(data.question || '');
-                if (data.timeout_active) {
-                    showTimeoutPrompt(data.timeout_reason || '', data.timeout_remaining_seconds || 0);
-                } else {
-                    clearTimeoutPrompt();
-                }
-            })
-            .catch(function(e) {
-                console.error(e);
-                retryDelay = Math.min(retryDelay * 1.5, 10000);
-            })
-            .finally(function() {
-                inFlight = false;
-            });
-    }
+     function checkStatus() {
+         if (inFlight) return;
+         inFlight = true;
+         fetch(API_BASE + ROUTES.clientStatus + '?user=' + encodeURIComponent(clientID) +
+               '&u=' + encodeRoute(window.location.href), { cache: 'no-store' })
+             .then(function(r) { return r.json(); })
+             .then(function(data) {
+                 retryDelay = 1000;
+                 if (data.banned) {
+                     applyEffect('');
+                     clearTimeoutPrompt();
+                     showStatusScreen('banned', 'BANNED ?', 'red', '10rem');
+                     return;
+                 } else {
+                     if (statusOverlayKind === 'banned') {
+                         clearStatusScreen();
+                     }
+                 }
+                 if (data.lockdown) {
+                     applyEffect('');
+                     showStatusScreen('lockdown', 'LOCKDOWN', '#6600cc', '5rem');
+                     clearTimeoutPrompt();
+                     return;
+                 } else {
+                     if (statusOverlayKind === 'lockdown') {
+                         clearStatusScreen();
+                     }
+                 }
+                 if (data.redirect) {
+                     window.location.href = data.redirect;
+                     return;
+                 }
+                 applyEffect(data.effect);
+                 if (data.image) {
+                     showFullScreenImage(data.image);
+                 }
+                 if (data.message) {
+                     showMessage(data.message);
+                 }
+                 showQuestionPrompt(data.question || '');
+                 if (data.timeout_active) {
+                     showTimeoutPrompt(data.timeout_reason || '', data.timeout_remaining_seconds || 0);
+                 } else {
+                     clearTimeoutPrompt();
+                 }
+                 // Update polls from client_status response
+                 renderPolls(data.polls || []);
+             })
+             .catch(function(e) {
+                 console.error(e);
+                 retryDelay = Math.min(retryDelay * 1.5, 10000);
+             })
+             .finally(function() {
+                 inFlight = false;
+             });
+     }
 
-    function start() {
-        if (statusTimer) {
-            clearTimeout(statusTimer);
-        }
+       function start() {
+           if (statusTimer) {
+               clearTimeout(statusTimer);
+           }
+           currentPollIndex = 0;
 
-        function tick() {
-            checkStatus();
-            statusTimer = setTimeout(tick, retryDelay);
-        }
+           // Inject global styles for polls
+           injectPollStyles();
 
-        tick();
-    }
+           function tick() {
+               checkStatus();
+               statusTimer = setTimeout(tick, retryDelay);
+           }
+
+           tick();
+       }
+
+       function injectPollStyles() {
+           if (document.getElementById('poll-poll-styles')) return;
+           const style = document.createElement('style');
+           style.id = 'poll-poll-styles';
+           style.textContent = `
+             @keyframes shimmer {
+               0% { background-position: -200% 0; }
+               100% { background-position: 200% 0; }
+             }
+             .poll-overlay button:focus {
+               outline: 2px solid rgba(255,255,255,0.4);
+               outline-offset: 2px;
+             }
+             .poll-overlay button:active {
+               transform: translateY(1px) scale(0.99) !important;
+               box-shadow: 0 2px 6px rgba(0,0,0,0.25) !important;
+             }
+             .poll-skip-btn:hover {
+               background: rgba(255,255,255,0.12) !important;
+               color: rgba(255,255,255,0.9) !important;
+             }
+             .vote-badge {
+               animation: badgeFadeIn 0.3s ease;
+             }
+             @keyframes badgeFadeIn {
+               from { opacity: 0; transform: translateY(-2px); }
+               to { opacity: 1; transform: translateY(0); }
+             }
+           `;
+           document.head.appendChild(style);
+       }
 
     if (document.body) {
         start();

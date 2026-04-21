@@ -5,6 +5,8 @@ from pathlib import Path
 import re
 import time
 import json
+import uuid
+from threading import RLock
 
 from flask import (
     Response,
@@ -16,6 +18,7 @@ from flask import (
     request,
     send_from_directory,
     url_for,
+    abort,
 )
 
 
@@ -44,6 +47,57 @@ HELP_HTML = """
 </body></html>
 """
 
+AUDIT_LOGIN_HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Audit Log Login</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; }
+    input { padding: 8px; font-size: 16px; width: 200px; }
+    button { padding: 8px 16px; font-size: 16px; cursor: pointer; }
+    .error { color: red; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h2>Audit Log Access</h2>
+  <p>Enter admin password to view audit logs:</p>
+  <form id="loginForm">
+    <input type="password" id="password" placeholder="Password" required autofocus>
+    <button type="submit">Login</button>
+  </form>
+  <p class="error" id="errorMsg" style="display:none;"></p>
+  <p><a href="/clients">Back to Client Manager</a></p>
+  <script>
+    document.getElementById('loginForm').onsubmit = function(e) {
+      e.preventDefault();
+      var pwd = document.getElementById('password').value;
+      fetch('/audit/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({password: pwd})
+      })
+      .then(r => {
+        if (r.ok) {
+          location.reload();
+        } else {
+          return r.json().then(d => { throw new Error(d.error || 'Invalid'); });
+        }
+      })
+      .catch(err => {
+        document.getElementById('errorMsg').textContent = err.message;
+        document.getElementById('errorMsg').style.display = 'block';
+      });
+    };
+  </script>
+</body>
+</html>
+"""
+
+# Audit viewer session storage (simple in-memory)
+_audit_lock = RLock()
+_audit_sessions = {}
+
 
 def register_routes(app, state):
     clients = state["clients"]
@@ -52,6 +106,18 @@ def register_routes(app, state):
     normalize_client_effect = state["normalize_client_effect"]
     clients_json_path = state["clients_json_path"]
     lockdown_state = state["lockdown"]
+    audit_mod = state.get("audit")
+    polls = state.get("polls", {})
+    polls_json_path = state.get("polls_json_path")
+
+    def audit_log(performer, action, target="system", details=None, success=True):
+        if audit_mod:
+            try:
+                audit_mod.append_audit(
+                    performer, action, target, details or {}, success, request
+                )
+            except Exception as e:
+                print("Audit log error:", e)
 
     def decode_xor_hex(value):
         if not value:
@@ -144,11 +210,13 @@ def register_routes(app, state):
     @app.route("/clients/ban", methods=["POST"])
     def ban_client():
         username = request.form.get("username", "").strip()
+        performer = request.form.get("performer", "anonymous")
         if not username:
             return redirect(url_for("clients_index"))
         with data_lock:
             clients.setdefault(username, {})["banned"] = True
             save_json(clients_json_path, clients)
+        audit_log(performer, "ban", username, {}, True)
         resp = make_response(redirect(url_for("clients_index")))
         resp.set_cookie(f"ban_{username}", "1")
         return resp
@@ -156,10 +224,12 @@ def register_routes(app, state):
     @app.route("/clients/unban", methods=["POST"])
     def unban_client():
         username = request.form.get("username", "").strip()
+        performer = request.form.get("performer", "anonymous")
         with data_lock:
             if username in clients:
                 clients[username]["banned"] = False
                 save_json(clients_json_path, clients)
+        audit_log(performer, "unban", username, {}, True)
         resp = make_response(redirect(url_for("clients_index")))
         resp.set_cookie(f"ban_{username}", "", expires=0)
         return resp
@@ -167,15 +237,18 @@ def register_routes(app, state):
     @app.route("/clients/delete", methods=["POST"])
     def delete_client():
         username = request.form.get("username", "").strip()
+        performer = request.form.get("performer", "anonymous")
         with data_lock:
             if username in clients:
                 del clients[username]
                 save_json(clients_json_path, clients)
+        audit_log(performer, "delete", username, {}, True)
         return redirect(url_for("clients_index"))
 
     @app.route("/clients/image", methods=["POST"])
     def send_image_to_client():
         username = request.form.get("username", "").strip()
+        performer = request.form.get("performer", "anonymous")
         file = request.files.get("image_file")
         image_base64 = request.form.get("image", "").strip()
 
@@ -203,30 +276,41 @@ def register_routes(app, state):
             with data_lock:
                 clients.setdefault(username, {})["image"] = image_data
                 save_json(clients_json_path, clients)
-
+            audit_log(
+                performer,
+                "image",
+                username,
+                {"type": "base64" if image_base64 else "file"},
+                True,
+            )
         return redirect(url_for("clients_index"))
 
     @app.route("/clients/message", methods=["POST"])
     def send_message_to_client():
         username = request.form.get("username", "").strip()
+        performer = request.form.get("performer", "anonymous")
         message = request.form.get("message", "").strip()
 
         if username and message:
             with data_lock:
                 clients.setdefault(username, {})["message"] = message
                 save_json(clients_json_path, clients)
+            audit_log(performer, "message", username, {"length": len(message)}, True)
 
         return redirect(url_for("clients_index"))
 
     @app.route("/clients/question", methods=["POST"])
     def send_question_to_client():
         username = request.form.get("username", "").strip()
+        performer = request.form.get("performer", "anonymous")
         question = request.form.get("question", "").strip()
         answer = request.form.get("answer", "").strip().lower()
 
         if not username:
             return redirect(url_for("clients_index"))
 
+        action_name = None
+        details = {}
         with data_lock:
             client = clients.setdefault(username, {})
             if question:
@@ -237,6 +321,8 @@ def register_routes(app, state):
                 )
                 client["question_answered_at"] = None
                 save_json(clients_json_path, clients)
+                action_name = "question"
+                details = {"question": question}
             elif not question and not answer:
                 # Clear question if empty question sent
                 client["question"] = None
@@ -244,6 +330,7 @@ def register_routes(app, state):
                 client["question_asked_at"] = None
                 client["question_answered_at"] = None
                 save_json(clients_json_path, clients)
+                action_name = "question_clear"
             elif answer in {"yes", "no"}:
                 client["question_answer"] = answer
                 client["question"] = None
@@ -251,12 +338,18 @@ def register_routes(app, state):
                     "%Y-%m-%d %H:%M:%S"
                 )
                 save_json(clients_json_path, clients)
+                action_name = "question_answer"
+                details = {"answer": answer}
+
+        if action_name:
+            audit_log(performer, action_name, username, details, True)
 
         return redirect(url_for("clients_index"))
 
     @app.route("/clients/timeout", methods=["POST"])
     def send_timeout_to_client():
         username = request.form.get("username", "").strip()
+        performer = request.form.get("performer", "anonymous")
         duration = request.form.get("duration", "").strip()
         reason = request.form.get("reason", "").strip()
 
@@ -276,11 +369,19 @@ def register_routes(app, state):
             client["timeout_duration_seconds"] = seconds
             save_json(clients_json_path, clients)
 
+        audit_log(
+            performer,
+            "timeout",
+            username,
+            {"duration_seconds": seconds, "reason": reason},
+            True,
+        )
         return redirect(url_for("clients_index"))
 
     @app.route("/clients/timeout/clear", methods=["POST"])
     def clear_timeout_on_client():
         username = request.form.get("username", "").strip()
+        performer = request.form.get("performer", "anonymous")
 
         if not username:
             return redirect(url_for("clients_index"))
@@ -293,17 +394,20 @@ def register_routes(app, state):
             client["timeout_duration_seconds"] = None
             save_json(clients_json_path, clients)
 
+        audit_log(performer, "untimeout", username, {}, True)
         return redirect(url_for("clients_index"))
 
     @app.route("/clients/note", methods=["POST"])
     def set_client_note():
         username = request.form.get("username", "").strip()
+        performer = request.form.get("performer", "anonymous")
         note = request.form.get("note", "").strip()
 
         if username:
             with data_lock:
                 clients.setdefault(username, {})["note"] = note
                 save_json(clients_json_path, clients)
+            audit_log(performer, "note", username, {"note_len": len(note)}, True)
 
         return redirect(url_for("clients_index"))
 
@@ -315,11 +419,14 @@ def register_routes(app, state):
     def client_script_js():
         return Response(CLIENT_SCRIPT_JS, content_type="application/javascript")
 
-    @app.route("/panel.js")
-    def clients_js():
-        return send_from_directory(
-            BASE_DIR, "panel.js", mimetype="application/javascript"
-        )
+    @app.route("/accounts.json")
+    def accounts_json():
+        accounts_path = BASE_DIR / "accounts.json"
+        if accounts_path.exists():
+            return send_from_directory(
+                BASE_DIR, "accounts.json", mimetype="application/json"
+            )
+        return jsonify([])
 
     @app.route("/clients/redirect", methods=["POST"])
     def redirect_client():
@@ -431,6 +538,118 @@ def register_routes(app, state):
     def help_page():
         return render_template_string(HELP_HTML)
 
+    @app.route("/audit/log", methods=["POST"])
+    def audit_log_client():
+        # Accept JSON from browser to log client-side events (login/logout, etc.)
+        if not request.is_json:
+            return jsonify({"error": "JSON required"}), 400
+        data = request.get_json() or {}
+        performer = data.get("performer", "anonymous")
+        action = data.get("action", "")
+        target = data.get("target", "system")
+        details = data.get("details", {})
+        success = data.get("success", True)
+        if audit_mod:
+            try:
+                audit_mod.append_audit(
+                    performer, action, target, details, success, request
+                )
+            except Exception as e:
+                print("Audit log error:", e)
+        return jsonify({"ok": True})
+
+    @app.route("/audit/login", methods=["POST"])
+    def audit_login():
+        if not request.is_json:
+            return jsonify({"error": "JSON required"}), 400
+        data = request.get_json() or {}
+        password = (data.get("password") or "").strip()
+        if not password:
+            return jsonify({"error": "Password required"}), 400
+        accounts_path = BASE_DIR / "accounts.json"
+        if not accounts_path.exists():
+            return jsonify({"error": "Accounts not configured"}), 500
+        try:
+            with open(accounts_path, "r") as f:
+                accounts = json.load(f)
+            if not isinstance(accounts, list):
+                accounts = []
+        except Exception:
+            accounts = []
+        valid = any(
+            isinstance(acc, dict) and acc.get("password") == password
+            for acc in accounts
+        )
+        if not valid:
+            return jsonify({"error": "Invalid password"}), 403
+        token = str(uuid.uuid4())
+        expiry = time.time() + (60 * 60 * 8)  # 8 hours
+        with _audit_lock:
+            _audit_sessions[token] = expiry
+        resp = jsonify({"ok": True})
+        resp.set_cookie(
+            "audit_session", token, max_age=60 * 60 * 8, httponly=True, samesite="Lax"
+        )
+        return resp
+
+    @app.route("/audit/logout")
+    def audit_logout():
+        resp = make_response(redirect(url_for("audit_viewer")))
+        resp.set_cookie("audit_session", "", max_age=0, expires=0)
+        return resp
+
+    @app.route("/audit")
+    def audit_page():
+        # Require login; check for a valid session via clients cookie? No auth yet.
+        # We'll use the same simple password check via query param? Better: reuse client-side logic,
+        # but for simplicity we'll allow direct access (local only)
+        return redirect(url_for("audit_viewer"))
+
+    @app.route("/audit/view")
+    def audit_viewer():
+        # Check authentication
+        token = request.cookies.get("audit_session")
+        authenticated = False
+        if token:
+            with _audit_lock:
+                expiry = _audit_sessions.get(token)
+                if expiry and time.time() <= expiry:
+                    authenticated = True
+                    # Optionally refresh expiry
+                    _audit_sessions[token] = time.time() + 60 * 60 * 8
+                elif token in _audit_sessions:
+                    _audit_sessions.pop(token, None)
+        if not authenticated:
+            return Response(AUDIT_LOGIN_HTML, content_type="text/html")
+        with open(BASE_DIR / "audit_viewer.html") as f:
+            return Response(f.read(), content_type="text/html")
+
+    @app.route("/audit.json")
+    def audit_json():
+        # Require authentication
+        token = request.cookies.get("audit_session")
+        authenticated = False
+        if token:
+            with _audit_lock:
+                expiry = _audit_sessions.get(token)
+                if expiry and time.time() <= expiry:
+                    authenticated = True
+                    _audit_sessions[token] = time.time() + 60 * 60 * 8
+                elif token in _audit_sessions:
+                    _audit_sessions.pop(token, None)
+        if not authenticated:
+            return jsonify({"error": "Unauthorized"}), 401
+        limit = request.args.get("limit", 100, type=int)
+        offset = request.args.get("offset", 0, type=int)
+        exclude_system = request.args.get("exclude_system", "false").lower() == "true"
+        entries = (
+            audit_mod.load_audit_entries(limit, offset, exclude_system)
+            if audit_mod
+            else []
+        )
+        total = len(entries)
+        return jsonify({"entries": entries, "total": total})
+
     @app.route("/client_status")
     def client_status():
         user = request.args.get("user", "").strip()
@@ -461,6 +680,8 @@ def register_routes(app, state):
                     "effect": None,
                     "last_ping": None,
                     "current_url": None,
+                    "lockdown": lockdown_state["active"],
+                    "polls": [],
                 }
             )
 
@@ -534,6 +755,11 @@ def register_routes(app, state):
 
             lockdown_active = lockdown_state["active"]
 
+            # Get active polls for client display
+            active_polls = [
+                p for p in polls.values() if p.get("active") and not p.get("closed")
+            ]
+
         return jsonify(
             {
                 "banned": status.get("banned", False),
@@ -556,6 +782,7 @@ def register_routes(app, state):
                 "last_ping": last_ping,
                 "current_url": clients[user]["current_url"],
                 "lockdown": lockdown_active,
+                "polls": active_polls,
             }
         )
 
@@ -598,3 +825,132 @@ def register_routes(app, state):
                 "unlock_time": lockdown_state.get("unlock_time"),
             }
         )
+
+    # ========================
+    # POLLS
+    # ========================
+    @app.route("/polls", methods=["GET"])
+    def get_polls():
+        """Get polls. By default returns active non-closed polls for clients. Pass 'all=1' to include all polls (admin)."""
+        include_all = request.args.get("all") == "1"
+        with data_lock:
+            if include_all:
+                poll_list = list(polls.values())
+            else:
+                poll_list = [
+                    p for p in polls.values() if p.get("active") and not p.get("closed")
+                ]
+        return jsonify({"polls": poll_list})
+
+    @app.route("/polls/vote", methods=["POST"])
+    def vote_poll():
+        """Client votes on a poll"""
+        if not request.is_json:
+            return jsonify({"error": "JSON required"}), 400
+        data = request.get_json() or {}
+        poll_id = data.get("poll_id")
+        option = data.get("option")
+        voter = data.get("voter", "anonymous")
+
+        if not poll_id or not option:
+            return jsonify({"error": "poll_id and option required"}), 400
+
+        with data_lock:
+            if poll_id not in polls:
+                return jsonify({"error": "Poll not found"}), 404
+            poll = polls[poll_id]
+            if poll.get("closed"):
+                return jsonify({"error": "Poll closed"}), 400
+
+            # Initialize votes if needed
+            if "votes" not in poll:
+                poll["votes"] = {}
+            if option not in poll["options"]:
+                return jsonify({"error": "Invalid option"}), 400
+
+            # Prevent duplicate voting
+            if voter in poll["votes"]:
+                return jsonify({"error": "You have already voted in this poll"}), 400
+            
+            # Block admins from voting in polls
+            if poll["created_by"] == voter:
+                return jsonify({"error": "Poll creator cannot vote"}), 400
+
+            poll["votes"][voter] = option
+            poll["voters"] = list(poll["votes"].keys())
+            save_json(polls_json_path, polls)
+
+        # Audit log
+        audit_log(voter, "poll_vote", poll_id, {"option": option}, True)
+        return jsonify({"ok": True})
+
+    @app.route("/polls/create", methods=["POST"])
+    def create_poll():
+        """Admin creates a new poll"""
+        if not request.is_json:
+            return jsonify({"error": "JSON required"}), 400
+        data = request.get_json() or {}
+        question = data.get("question", "").strip()
+        options = data.get("options", [])
+        performer = data.get("performer", "anonymous")
+
+        if not question or not options or len(options) < 2:
+            return jsonify({"error": "Question and at least 2 options required"}), 400
+
+        poll_id = str(uuid.uuid4())[:8]
+        with data_lock:
+            # Keep maximum 2 active polls at any time - close oldest ones
+            active_open = [k for k,p in polls.items() if p.get("active") and not p.get("closed")]
+            while len(active_open) >= 2:
+                # Close oldest active poll
+                oldest = min(active_open, key=lambda x: polls[x]["created_at"])
+                polls[oldest]["closed"] = True
+                active_open.remove(oldest)
+            
+            # Keep last 2 polls total - delete older polls
+            all_sorted = sorted(polls.keys(), key=lambda x: polls[x]["created_at"], reverse=True)
+            for old_poll_id in all_sorted[2:]:
+                polls.pop(old_poll_id, None)
+
+            polls[poll_id] = {
+                "id": poll_id,
+                "question": question,
+                "options": options,
+                "votes": {},
+                "voters": [],
+                "active": True,
+                "closed": False,
+                "created_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+                "created_by": performer,
+            }
+            save_json(polls_json_path, polls)
+
+        audit_log(
+            performer,
+            "poll_create",
+            poll_id,
+            {"question": question, "options": len(options)},
+            True,
+        )
+        return jsonify({"ok": True, "poll_id": poll_id, "poll": polls[poll_id]})
+
+    @app.route("/polls/<poll_id>/close", methods=["POST"])
+    def close_poll(poll_id):
+        """Admin closes a poll"""
+        performer = request.form.get("performer", "anonymous")
+        with data_lock:
+            if poll_id in polls:
+                polls[poll_id]["closed"] = True
+                save_json(polls_json_path, polls)
+                audit_log(performer, "poll_close", poll_id, {}, True)
+                return jsonify({"ok": True})
+        return jsonify({"error": "Poll not found"}), 404
+
+    @app.route("/polls/<poll_id>/results")
+    def poll_results(poll_id):
+        """Get poll results with who voted for what"""
+        with data_lock:
+            poll = polls.get(poll_id)
+            if not poll:
+                return jsonify({"error": "Poll not found"}), 404
+        return jsonify({"poll": poll})

@@ -12,5 +12,12 @@
     "mode": "deny",
     "allowedActions": [],
     "deniedActions": []
+  },
+  {
+    "password": "12345",
+    "label": "Noodle",
+    "mode": "deny",
+    "allowedActions": [],
+    "deniedActions": []
   }
 ]

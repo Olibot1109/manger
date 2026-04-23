@@ -1,16 +1,37 @@
 [
   {
-    "password": "1211",
+    "password": "2013",
     "label": "ojdaw",
     "mode": "deny",
     "allowedActions": [],
     "deniedActions": []
   },
   {
-    "password": "888",
-    "label": "888",
+    "password": "bolluc112",
+    "label": "Spazzy mc gee",
     "mode": "deny",
     "allowedActions": [],
+    "deniedActions": []
+  },
+  {
+    "password": "123",
+    "label": "HELLOOO",
+    "mode": "deny",
+    "allowedActions": [],
+    "deniedActions": []
+  },
+  {
+    "password": "12345",
+    "label": "Noodle",
+    "mode": "deny",
+    "allowedActions": [],
+    "deniedActions": []
+  },
+  {
+    "password": "Lex12",
+    "label": "Lexi",
+    "mode": "allow",
+    "allowedActions": ["message"],
     "deniedActions": []
   }
 ]

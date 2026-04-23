@@ -36,16 +36,6 @@ CLIENT_SCRIPT_HTML = """
 </body></html>
 """
 CLIENT_SCRIPT_JS = (BASE_DIR / "client.js").read_text()
-HELP_HTML = """
-<!DOCTYPE html><html><head><title>Help</title></head><body>
-<h1>Help</h1>
-<ul>
-<li><a href="/shortener">URL Shortener</a></li>
-<li><a href="/clients">Client Manager</a></li>
-</ul>
-<p><a href="/">Back Home</a></p>
-</body></html>
-"""
 
 AUDIT_LOGIN_HTML = """
 <!DOCTYPE html>
@@ -533,10 +523,6 @@ def register_routes(app, state):
                     save_json(clients_json_path, clients)
 
         return redirect(url_for("clients_index"))
-
-    @app.route("/help")
-    def help_page():
-        return render_template_string(HELP_HTML)
 
     @app.route("/audit/log", methods=["POST"])
     def audit_log_client():

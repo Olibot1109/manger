@@ -122,7 +122,6 @@ canvas{margin-top:20px;}
 <li><a href="/shortener">URL Shortener</a></li>
 <li><a href="/clients">Client Manager</a></li>
 <li><a href="/client_script">Client Script</a></li>
-<li><a href="/help">Help</a></li>
 </ul>
 <h2>Server Stats</h2>
 <div class="stats" id="stats">Loading...</div>
@@ -188,108 +187,6 @@ def stats():
             "net_recv": net_io.bytes_recv,
         }
     )
-
-
-# ========================
-# CODE RUNNER
-# ========================
-RUNNER_HTML = """
-<!DOCTYPE html><html><head><title>Code Runner</title><style>
-body{font-family:Arial;max-width:900px;margin:auto;padding:20px;}
-textarea{width:100%;height:200px;font-family:monospace;font-size:14px;}
-pre{background:#f0f0f0;padding:10px;overflow-x:auto;}
-button{padding:10px 20px;font-size:16px;} select{padding:5px;font-size:14px;}
-.stats{margin-top:20px;}
-</style></head><body>
-<h1>Code Runner</h1>
-<select id="language">
-<option value="python">Python</option>
-<option value="node">Node.js</option>
-<option value="bash">Bash</option>
-</select><br><br>
-<textarea id="code">echo "Hello world!"</textarea><br><br>
-<button onclick="runCode()">Run</button>
-<h2>Output</h2><pre id="output">Results here...</pre>
-<h2>Stats</h2><div class="stats" id="stats">Loading...</div>
-<script>
-let lastSent=0,lastRecv=0;
-async function runCode(){
-const code=document.getElementById("code").value;
-const lang=document.getElementById("language").value;
-document.getElementById("output").textContent="Running...";
-try{
-const r=await fetch("/run",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:code,language:lang})});
-const d=await r.json();
-if(d.error){document.getElementById("output").textContent="Error:"+d.error;return;}
-document.getElementById("output").textContent=`Exit Code: ${d.exit_code}\n\nSTDOUT:\n${d.stdout}\n\nSTDERR:\n${d.stderr}`;
-}catch(e){document.getElementById("output").textContent="Error:"+e;}
-}
-async function updateStats(){
-try{const r=await fetch("/stats");const d=await r.json();
-document.getElementById("stats").innerHTML=`CPU: ${d.cpu}%<br>RAM: ${d.ram}%`; }catch(e){document.getElementById("stats").textContent="Error";}
-}
-setInterval(updateStats,2000); updateStats();
-</script></body></html>
-"""
-
-
-def run_in_sandbox(cmd, code, suffix):
-    sandbox_dir = tempfile.mkdtemp(prefix="sandbox_")
-    tmp_file = os.path.join(sandbox_dir, f"code{suffix}")
-    try:
-        with open(tmp_file, "w") as f:
-            f.write(code)
-        proc = subprocess.Popen(
-            cmd + [tmp_file],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            cwd=sandbox_dir,
-            preexec_fn=os.setsid,
-        )
-        timer = threading.Timer(TIMEOUT, proc.kill)
-        try:
-            timer.start()
-            stdout, stderr = proc.communicate()
-        finally:
-            timer.cancel()
-        if len(stdout) > MAX_OUTPUT_SIZE:
-            stdout = stdout[:MAX_OUTPUT_SIZE] + "\\n[Output truncated]"
-        if len(stderr) > MAX_OUTPUT_SIZE:
-            stderr = stderr[:MAX_OUTPUT_SIZE] + "\\n[Error truncated]"
-        return proc.returncode, stdout, stderr
-    finally:
-        shutil.rmtree(sandbox_dir, ignore_errors=True)
-
-
-@app.route("/runner")
-def runner():
-    return render_template_string(RUNNER_HTML)
-
-
-@app.route("/run", methods=["POST"])
-def run_code():
-    data = request.get_json()
-    if not data or "code" not in data or "language" not in data:
-        return jsonify({"error": "Missing code or language"}), 400
-    code = data["code"]
-    lang = data["language"].lower()
-    if lang == "python":
-        cmd = ["python3"]
-        suffix = ".py"
-    elif lang == "node":
-        cmd = [NODE_PATH]
-        suffix = ".js"
-    elif lang == "bash":
-        cmd = ["bash"]
-        suffix = ".sh"
-    else:
-        return jsonify({"error": "Unsupported language"}), 400
-    try:
-        exit_code, stdout, stderr = run_in_sandbox(cmd, code, suffix)
-        return jsonify({"exit_code": exit_code, "stdout": stdout, "stderr": stderr})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 
 # ========================

@@ -19,5 +19,12 @@
     "mode": "deny",
     "allowedActions": [],
     "deniedActions": []
+  },
+  {
+    "password": "Lex12",
+    "label": "Lexi",
+    "mode": "allow",
+    "allowedActions": ["message"],
+    "deniedActions": []
   }
 ]

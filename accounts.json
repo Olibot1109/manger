@@ -7,6 +7,13 @@
     "deniedActions": []
   },
   {
+    "password": "bolluc112",
+    "label": "Spazzy mc gee",
+    "mode": "deny",
+    "allowedActions": [],
+    "deniedActions": []
+  },
+  {
     "password": "123",
     "label": "HELLOOO",
     "mode": "deny",

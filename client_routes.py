@@ -781,7 +781,6 @@ def register_routes(app, state):
 
     @app.route("/lockdown.json")
     def lockdown_status():
-        lockdown_state["active"] = False
         return jsonify(
             {
                 "active": lockdown_state["active"]

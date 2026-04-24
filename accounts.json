@@ -1,7 +1,14 @@
 [
   {
-    "password": "2013",
+    "password": "1107",
     "label": "ojdaw",
+    "mode": "deny",
+    "allowedActions": [],
+    "deniedActions": []
+  },
+  {
+    "password": "2013",
+    "label": "tomas",
     "mode": "deny",
     "allowedActions": [],
     "deniedActions": []

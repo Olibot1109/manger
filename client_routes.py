@@ -667,7 +667,6 @@ def register_routes(app, state):
                     "last_ping": None,
                     "current_url": None,
                     "lockdown": lockdown_state["active"],
-                    "polls": [],
                 }
             )
 
@@ -740,12 +739,7 @@ def register_routes(app, state):
             save_json(clients_json_path, clients)
 
             lockdown_active = lockdown_state["active"]
-
-            # Get active polls for client display
-            active_polls = [
-                p for p in polls.values() if p.get("active") and not p.get("closed")
-            ]
-
+            
         return jsonify(
             {
                 "banned": status.get("banned", False),
@@ -768,7 +762,6 @@ def register_routes(app, state):
                 "last_ping": last_ping,
                 "current_url": clients[user]["current_url"],
                 "lockdown": lockdown_active,
-                "polls": active_polls,
             }
         )
 
@@ -779,164 +772,21 @@ def register_routes(app, state):
 
         if action == "on":
             lockdown_state["active"] = True
-            if duration_minutes.isdigit():
-                lockdown_state["unlock_time"] = time.time() + (
-                    int(duration_minutes) * 60
-                )
-            else:
-                lockdown_state["unlock_time"] = None
         else:
             lockdown_state["active"] = False
-            lockdown_state["unlock_time"] = None
 
         return jsonify(
             {
                 "success": True,
                 "lockdown": lockdown_state["active"],
-                "unlock_time": lockdown_state.get("unlock_time"),
             }
         )
 
     @app.route("/lockdown.json")
     def lockdown_status():
-        if (
-            lockdown_state.get("unlock_time")
-            and time.time() >= lockdown_state["unlock_time"]
-        ):
-            lockdown_state["active"] = False
-            lockdown_state["unlock_time"] = None
+        lockdown_state["active"] = False
         return jsonify(
             {
-                "active": lockdown_state["active"],
-                "unlock_time": lockdown_state.get("unlock_time"),
+                "active": lockdown_state["active"]
             }
         )
-
-    # ========================
-    # POLLS
-    # ========================
-    @app.route("/polls", methods=["GET"])
-    def get_polls():
-        """Get polls. By default returns active non-closed polls for clients. Pass 'all=1' to include all polls (admin)."""
-        include_all = request.args.get("all") == "1"
-        with data_lock:
-            if include_all:
-                poll_list = list(polls.values())
-            else:
-                poll_list = [
-                    p for p in polls.values() if p.get("active") and not p.get("closed")
-                ]
-        return jsonify({"polls": poll_list})
-
-    @app.route("/polls/vote", methods=["POST"])
-    def vote_poll():
-        """Client votes on a poll"""
-        if not request.is_json:
-            return jsonify({"error": "JSON required"}), 400
-        data = request.get_json() or {}
-        poll_id = data.get("poll_id")
-        option = data.get("option")
-        voter = data.get("voter", "anonymous")
-
-        if not poll_id or not option:
-            return jsonify({"error": "poll_id and option required"}), 400
-
-        with data_lock:
-            if poll_id not in polls:
-                return jsonify({"error": "Poll not found"}), 404
-            poll = polls[poll_id]
-            if poll.get("closed"):
-                return jsonify({"error": "Poll closed"}), 400
-
-            # Initialize votes if needed
-            if "votes" not in poll:
-                poll["votes"] = {}
-            if option not in poll["options"]:
-                return jsonify({"error": "Invalid option"}), 400
-
-            # Prevent duplicate voting
-            if voter in poll["votes"]:
-                return jsonify({"error": "You have already voted in this poll"}), 400
-            
-            # Block admins from voting in polls
-            if poll["created_by"] == voter:
-                return jsonify({"error": "Poll creator cannot vote"}), 400
-
-            poll["votes"][voter] = option
-            poll["voters"] = list(poll["votes"].keys())
-            save_json(polls_json_path, polls)
-
-        # Audit log
-        audit_log(voter, "poll_vote", poll_id, {"option": option}, True)
-        return jsonify({"ok": True})
-
-    @app.route("/polls/create", methods=["POST"])
-    def create_poll():
-        """Admin creates a new poll"""
-        if not request.is_json:
-            return jsonify({"error": "JSON required"}), 400
-        data = request.get_json() or {}
-        question = data.get("question", "").strip()
-        options = data.get("options", [])
-        performer = data.get("performer", "anonymous")
-
-        if not question or not options or len(options) < 2:
-            return jsonify({"error": "Question and at least 2 options required"}), 400
-
-        poll_id = str(uuid.uuid4())[:8]
-        with data_lock:
-            # Keep maximum 2 active polls at any time - close oldest ones
-            active_open = [k for k,p in polls.items() if p.get("active") and not p.get("closed")]
-            while len(active_open) >= 2:
-                # Close oldest active poll
-                oldest = min(active_open, key=lambda x: polls[x]["created_at"])
-                polls[oldest]["closed"] = True
-                active_open.remove(oldest)
-            
-            # Keep last 2 polls total - delete older polls
-            all_sorted = sorted(polls.keys(), key=lambda x: polls[x]["created_at"], reverse=True)
-            for old_poll_id in all_sorted[2:]:
-                polls.pop(old_poll_id, None)
-
-            polls[poll_id] = {
-                "id": poll_id,
-                "question": question,
-                "options": options,
-                "votes": {},
-                "voters": [],
-                "active": True,
-                "closed": False,
-                "created_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
-                "created_by": performer,
-            }
-            save_json(polls_json_path, polls)
-
-        audit_log(
-            performer,
-            "poll_create",
-            poll_id,
-            {"question": question, "options": len(options)},
-            True,
-        )
-        return jsonify({"ok": True, "poll_id": poll_id, "poll": polls[poll_id]})
-
-    @app.route("/polls/<poll_id>/close", methods=["POST"])
-    def close_poll(poll_id):
-        """Admin closes a poll"""
-        performer = request.form.get("performer", "anonymous")
-        with data_lock:
-            if poll_id in polls:
-                polls[poll_id]["closed"] = True
-                save_json(polls_json_path, polls)
-                audit_log(performer, "poll_close", poll_id, {}, True)
-                return jsonify({"ok": True})
-        return jsonify({"error": "Poll not found"}), 404
-
-    @app.route("/polls/<poll_id>/results")
-    def poll_results(poll_id):
-        """Get poll results with who voted for what"""
-        with data_lock:
-            poll = polls.get(poll_id)
-            if not poll:
-                return jsonify({"error": "Poll not found"}), 404
-        return jsonify({"poll": poll})

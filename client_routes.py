@@ -97,8 +97,6 @@ def register_routes(app, state):
     clients_json_path = state["clients_json_path"]
     lockdown_state = state["lockdown"]
     audit_mod = state.get("audit")
-    polls = state.get("polls", {})
-    polls_json_path = state.get("polls_json_path")
 
     def audit_log(performer, action, target="system", details=None, success=True):
         if audit_mod:
@@ -768,7 +766,6 @@ def register_routes(app, state):
     @app.route("/lockdown", methods=["POST"])
     def lockdown():
         action = request.form.get("action")
-        duration_minutes = request.form.get("duration", "").strip()
 
         if action == "on":
             lockdown_state["active"] = True

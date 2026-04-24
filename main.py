@@ -34,7 +34,6 @@ start_time = time.time()
 URLS_FILE = BASE_DIR / "urls.json"
 
 CLIENTS_JSON = BASE_DIR / "clients.json"
-POLLS_JSON = BASE_DIR / "polls.json"
 
 LOCKDOWN_ACTIVE = False
 LOCKDOWN_URL = "https://www.google.com"
@@ -97,7 +96,6 @@ def is_valid_route_path(path):
 # ========================
 urls = load_json(URLS_FILE)
 clients = load_json(CLIENTS_JSON)
-polls = load_json(POLLS_JSON)
 
 # ========================
 # HOME & STATS
@@ -264,8 +262,6 @@ register_client_routes(
         "normalize_client_effect": normalize_client_effect,
         "lockdown": {"active": LOCKDOWN_ACTIVE, "url": LOCKDOWN_URL},
         "audit": audit_mod,
-        "polls": polls,
-        "polls_json_path": POLLS_JSON,
     },
 )
 

@@ -16,11 +16,8 @@ function toggleAutoRefresh() {
   }
 }
 
-function toggleLockdown(duration) {
+function toggleLockdown() {
   var body = 'action=on';
-  if (duration) {
-    body += '&duration=' + encodeURIComponent(duration);
-  }
   body += '&performer=' + encodeURIComponent(authSession.currentLabel || '');
   fetch(ROUTES.lockdown, {method: 'POST', body: body, headers: {'Content-Type': 'application/x-www-form-urlencoded'}})
     .then(function(r) { return r.json(); })
@@ -42,24 +39,16 @@ function disableLockdown() {
 
 function promptLockdown() {
   if (!pass('lockdown')) return;
-  var duration = prompt("Enter lockdown duration in minutes (leave empty for indefinite):", "7");
-  if (duration === null) return;
-  toggleLockdown(duration || '');
+  toggleLockdown();
 }
 
 function updateLockdownBtn() {
   fetch(ROUTES.lockdownJson).then(function(r) { return r.json(); }).then(function(d) {
     lockdownState.active = !!d.active;
-    lockdownState.unlockTime = d.unlock_time || null;
     var btn = document.getElementById('btn-lockdown');
     if (!btn) return;
     if (d.active) {
-      if (d.unlock_time) {
-        var remaining = Math.max(0, Math.round((d.unlock_time - Date.now()) / 1000 / 60));
-        btn.textContent = 'LOCKED (' + remaining + 'm)';
-      } else {
-        btn.textContent = 'UNLOCK';
-      }
+      btn.textContent = 'LOCKED';
       btn.style.backgroundColor = 'green';
     } else {
       btn.textContent = 'LOCKDOWN';

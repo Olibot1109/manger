@@ -1,0 +1,9 @@
+{"id":"20260425141037908678","timestamp":"2026-04-25T14:10:37Z","performer":"anonymous","action":"login_attempt","target":"system","details":{"reason":"wrong_password"},"success":false,"ip":"127.0.0.1"}
+{"id":"20260425141037910125","timestamp":"2026-04-25T14:10:37Z","performer":"HELLOOO","action":"login","target":"system","details":{"permissions":"deny"},"success":true,"ip":"127.0.0.1"}
+{"id":"20260425141041310247","timestamp":"2026-04-25T14:10:41Z","performer":"HELLOOO","action":"login","target":"system","details":{"permissions":"deny"},"success":true,"ip":"127.0.0.1"}
+{"id":"20260425141307638540","timestamp":"2026-04-25T14:13:07Z","performer":"ojdaw","action":"login","target":"system","details":{"permissions":"deny"},"success":true,"ip":"192.168.1.146"}
+{"id":"20260425141714586403","timestamp":"2026-04-25T14:17:14Z","performer":"ojdaw","action":"ban","target":"IHpNnI8l","details":{},"success":true,"ip":"192.168.1.146"}
+{"id":"20260425141716999405","timestamp":"2026-04-25T14:17:16Z","performer":"ojdaw","action":"unban","target":"IHpNnI8l","details":{},"success":true,"ip":"192.168.1.146"}
+{"id":"20260425141741035307","timestamp":"2026-04-25T14:17:41Z","performer":"ojdaw","action":"ban","target":"IHpNnI8l","details":{},"success":true,"ip":"192.168.1.146"}
+{"id":"20260425141743168352","timestamp":"2026-04-25T14:17:43Z","performer":"ojdaw","action":"unban","target":"IHpNnI8l","details":{},"success":true,"ip":"192.168.1.146"}
+{"id":"20260425142539168537","timestamp":"2026-04-25T14:25:39Z","performer":"ojdaw","action":"login","target":"system","details":{"permissions":"deny"},"success":true,"ip":"127.0.0.1"}

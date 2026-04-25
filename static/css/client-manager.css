@@ -1,0 +1,389 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 20px;
+}
+
+.page-title {
+  margin: 0 0 20px;
+  font-size: clamp(44px, 5vw, 60px);
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.recent {
+  background-color: #c8f7c5;
+}
+
+.inactive {
+  background-color: #f7c5c5;
+}
+
+.status-banned-row {
+  background-color: #ccddff;
+}
+
+.status-timeout-row {
+  background-color: #ffe4b5;
+}
+
+table {
+  margin-bottom: 30px;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th,
+td {
+  padding: 8px 12px;
+  border: 1px solid #999;
+  text-align: left;
+  vertical-align: top;
+}
+
+.manager {
+  border: 2px solid #333;
+  padding: 10px;
+  max-width: 800px;
+  margin-top: 10px;
+  background: #f0f0f0;
+}
+
+.entry {
+  margin: 5px 0;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  border: 1px solid #999;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.entry.entry-green {
+  background-color: #4caf50;
+  color: white;
+  border-color: #4caf50;
+}
+
+.entry.entry-blue {
+  background-color: #2196f3;
+  color: white;
+  border-color: #2196f3;
+}
+
+.entry.entry-orange {
+  background-color: #ff9800;
+  color: white;
+  border-color: #ff9800;
+}
+
+.entry.entry-purple {
+  background-color: #9c27b0;
+  color: white;
+  border-color: #9c27b0;
+}
+
+.entry.entry-pink {
+  background-color: #e91e63;
+  color: white;
+  border-color: #e91e63;
+}
+
+.entry.selected {
+  border-color: #007bff;
+  background-color: #cce5ff;
+}
+
+.entry button {
+  margin-right: 5px;
+}
+
+.entry-name {
+  flex-grow: 1;
+  font-weight: bold;
+}
+
+.selected-label {
+  font-weight: bold;
+  color: #007bff;
+  margin-top: 10px;
+  display: block;
+}
+
+img.client-img {
+  max-width: 100px;
+  max-height: 100px;
+  display: block;
+  margin-top: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.auth-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1;
+  font-weight: 700;
+  color: #111;
+  padding-top: 0.1em;
+  vertical-align: baseline;
+}
+
+.auth-bar .auth-label {
+  font-weight: 700;
+  letter-spacing: 0.1px;
+}
+
+.auth-bar .auth-login,
+.auth-bar .auth-logout {
+  background: #f4f4f4;
+  border: 1px solid #8d8d8d;
+  color: #111;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.65em;
+  font-weight: 500;
+  line-height: 1;
+  box-shadow: none;
+}
+
+.auth-bar .auth-login:hover {
+  background: #e9e9e9;
+}
+
+.auth-bar .auth-login:active {
+  transform: translateY(0);
+}
+
+.auth-bar .auth-logout {
+  background: #f4f4f4;
+}
+
+.auth-bar .auth-logout:hover {
+  background: #e9e9e9;
+}
+
+.toolbar-button {
+  margin-bottom: 10px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.toolbar-button.danger {
+  background-color: red;
+  color: white;
+}
+
+.toolbar-button.accent {
+  background-color: #ff00ff;
+  color: white;
+  font-weight: bold;
+}
+
+.toolbar-button.purple {
+  background-color: #9c27b0;
+  color: white;
+}
+
+.toolbar-button.locked {
+  background-color: green;
+  color: white;
+}
+
+.toolbar-button.auto-active {
+  background-color: red;
+  color: white;
+}
+
+.control-select {
+  margin-bottom: 10px;
+  padding: 5px;
+}
+
+.stats-line {
+  margin-bottom: 10px;
+}
+
+.hidden-input {
+  display: none;
+}
+
+.status-text.status-online {
+  color: green;
+}
+
+.status-text.status-offline {
+  color: gray;
+}
+
+.status-text.status-active {
+  color: green;
+}
+
+.status-text.status-banned {
+  color: blue;
+  font-weight: bold;
+}
+
+.status-text.status-timeout {
+  color: orange;
+  font-weight: bold;
+}
+
+.cell-muted {
+  color: gray;
+}
+
+.action-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+}
+
+.action-group {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 2px 4px;
+  width: 100%;
+  box-sizing: border-box;
+  background: #fff;
+}
+
+.action-group input:not([type="file"]),
+.action-group select {
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid #999;
+  border-radius: 3px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.1;
+}
+
+.action-group input:not([type="file"]) {
+  width: 220px;
+}
+
+.action-group input.inp-timeout-duration {
+  width: 145px;
+}
+
+.action-group input.inp-timeout-reason {
+  width: 200px;
+}
+
+.action-group input[type="file"] {
+  width: 255px;
+  max-width: 100%;
+  padding: 2px 0;
+  min-width: 0;
+}
+
+.action-group select {
+  width: 150px;
+}
+
+.action-button {
+  border: 2px solid #111;
+  border-radius: 0;
+  color: white;
+  cursor: pointer;
+  padding: 2px 8px;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.action-group.ban-group {
+  background-color: #f8c7c7;
+}
+
+.action-group.redirect-group {
+  background-color: #cfe2ff;
+}
+
+.action-group.image-group {
+  background-color: #dcc8ff;
+}
+
+.action-group.message-group {
+  background-color: #c8f7c5;
+}
+
+.action-group.question-group {
+  background-color: #fbe2cd;
+}
+
+.action-group.timeout-group {
+  background-color: #f9c9d4;
+}
+
+.action-group.note-group {
+  background-color: #c8f7c5;
+}
+
+.action-group.effect-group {
+  background-color: #dcc8ff;
+}
+
+.action-group.delete-group {
+  background-color: #f8c7c7;
+}
+
+.action-button.btn-toggle-ban {
+  background-color: #ff4444;
+}
+
+.action-button.btn-redirect {
+  background-color: #0066cc;
+}
+
+.action-button.btn-img {
+  background-color: #9900cc;
+}
+
+.action-button.btn-msg {
+  background-color: #00cc00;
+}
+
+.action-button.btn-question {
+  background-color: #cc6600;
+}
+
+.action-button.btn-clear-question {
+  background-color: #cc9933;
+}
+
+.action-button.btn-untimeout,
+.action-button.btn-timeout {
+  background-color: #cc0066;
+}
+
+.action-button.btn-note {
+  background-color: #009900;
+}
+
+.action-button.btn-effect {
+  background-color: #6600cc;
+}
+
+.action-button.btn-effect-clear {
+  background-color: #9966cc;
+}
+
+.action-button.btn-delete {
+  background-color: #cc0000;
+}
+
+.control-row {
+  margin-bottom: 10px;
+}

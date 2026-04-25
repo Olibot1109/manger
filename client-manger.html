@@ -2,115 +2,31 @@
 <html>
 <head>
   <title>Client Manager</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-    .recent { background-color: #c8f7c5; }
-    .inactive { background-color: #f7c5c5; }
-    table { margin-bottom: 30px; border-collapse: collapse; width: 100%; }
-    th, td { padding: 8px 12px; border: 1px solid #999; text-align: left; vertical-align: top; }
-
-    /* Sound/Image Manager */
-    .manager { border: 2px solid #333; padding: 10px; max-width: 800px; margin-top:10px; background: #f0f0f0; }
-    .entry { margin: 5px 0; padding: 5px; display: flex; align-items: center; border: 1px solid #999; border-radius: 4px; background: #fff; cursor: pointer; }
-    .entry.selected { border-color: #007bff; background-color: #cce5ff; }
-    .entry button { margin-right: 5px; }
-    .entry-name { flex-grow: 1; font-weight: bold; }
-
-    .selected-label { font-weight: bold; color: #007bff; margin-top: 10px; display: block; }
-    img.client-img { max-width: 100px; max-height: 100px; display:block; margin-top:5px; border:1px solid #ccc; border-radius:4px; }
-
-    /* Auth Bar */
-    .auth-bar {
-      position: fixed;
-      top: 0;
-      right: 0;
-      z-index: 9999;
-      padding: 10px 18px;
-      background: linear-gradient(135deg, #1a1a2e, #16213e);
-      color: #fff;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      font-size: 13px;
-      border-bottom-left-radius: 10px;
-      box-shadow: 0 3px 12px rgba(0,0,0,0.2);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      transition: all 0.3s ease;
-    }
-    .auth-bar .status-dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background-color: #ff4444;
-      transition: background-color 0.3s ease, box-shadow 0.3s ease;
-      box-shadow: 0 0 6px rgba(255, 68, 68, 0.4);
-    }
-    .auth-bar.authenticated .status-dot {
-      background-color: #00cc66;
-      box-shadow: 0 0 6px rgba(0, 204, 102, 0.4);
-    }
-    .auth-bar .auth-label {
-      font-weight: 600;
-      letter-spacing: 0.3px;
-    }
-    .auth-bar .auth-login {
-      background: linear-gradient(135deg, #00cc66, #00aa55);
-      border: none;
-      color: white;
-      padding: 6px 14px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 600;
-      transition: all 0.2s ease;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-    .auth-bar .auth-login:hover {
-      background: linear-gradient(135deg, #00dd77, #00bb66);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.25);
-    }
-    .auth-bar .auth-login:active {
-      transform: translateY(0);
-    }
-    .auth-bar .auth-logout {
-      background: rgba(255,255,255,0.12);
-      border: 1px solid rgba(255,255,255,0.25);
-      color: white;
-      padding: 5px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 500;
-      transition: all 0.2s ease;
-    }
-    .auth-bar .auth-logout:hover {
-      background: rgba(255,255,255,0.22);
-      border-color: rgba(255,255,255,0.35);
-    }
-  </style>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/css/client-manager.css">
 </head>
 <body>
-<h1><div id="auth-bar"></div></h1>
-<button onclick="loadClients()" style="margin-bottom:10px;padding:5px 10px;cursor:pointer;">Refresh</button>
-<button id="btn-auto" onclick="toggleAutoRefresh()" style="margin-bottom:10px;padding:5px 10px;cursor:pointer;">Auto Refresh</button>
+Client Manager <span id="auth-bar" class="auth-bar"></span>
+<br>
+<button class="toolbar-button" onclick="loadClients()">Refresh</button>
+<button id="btn-auto" class="toolbar-button" onclick="toggleAutoRefresh()">Auto Refresh</button>
 
-<select id="filterSelect" style="margin-bottom:10px;padding:5px;">
+<select id="filterSelect" class="control-select">
 <option value="all">All</option>
 <option value="active">Active</option>
 <option value="banned">Banned</option>
 <option value="inactive">Inactive</option>
 </select>
-<select id="sortSelect" style="margin-bottom:10px;padding:5px;">
+<select id="sortSelect" class="control-select">
 <option value="recent">Sort by Recent</option>
 <option value="name">Sort by Name</option>
 <option value="url">Sort by URL</option>
 </select>
-<div id="clientStats" style="margin-bottom:10px;"></div>
-<button id="btn-delete-all" onclick="deleteAll()" style="margin-bottom:10px;padding:5px 10px;cursor:pointer;background-color:red;color:white;">Delete All</button>
+<div id="clientStats" class="stats-line"></div>
+<button id="btn-delete-all" class="toolbar-button danger" onclick="deleteAll()">Delete All</button>
 
-<button id="btn-lockdown" onclick="if(this.textContent==='LOCKDOWN'){promptLockdown()}else{disableLockdown()}" style="margin-bottom:10px;padding:5px 10px;cursor:pointer;background-color:#ff00ff;color:white;font-weight:bold;">LOCKDOWN</button>
-<button onclick="showIdAllClients()" style="margin-bottom:10px;padding:5px 10px;cursor:pointer;background-color:#9C27B0;color:white;">Show My ID (All)</button>
+<button id="btn-lockdown" class="toolbar-button accent" onclick="if(this.textContent==='LOCKDOWN'){promptLockdown()}else{disableLockdown()}">LOCKDOWN</button>
+<button class="toolbar-button purple" onclick="showIdAllClients()">Show My ID (All)</button>
 <table id="clientsTable">
 <tr>
   <th>Username</th>
@@ -126,28 +42,29 @@
 </table>
 
 <div class="manager" id="image_manager_global">
-<button class="entry" onclick="redirectAllActive()" style="margin-top:10px; background-color:#4CAF50; color:white; padding:5px 10px; border:none; border-radius:4px; cursor:pointer;">
+<button class="entry entry-green" onclick="redirectAllActive()">
   Redirect All Active Clients
 </button>
-<button class="entry" onclick="messageAllActive()" style="margin-top:10px; background-color:#2196F3; color:white; padding:5px 10px; border:none; border-radius:4px; cursor:pointer;">
+<button class="entry entry-blue" onclick="messageAllActive()">
   Message All Active Clients
 </button>
-<button class="entry" onclick="askAllActive()" style="margin-top:10px; background-color:#FF9800; color:white; padding:5px 10px; border:none; border-radius:4px; cursor:pointer;">
+<button class="entry entry-orange" onclick="askAllActive()">
   Ask All Active Clients
 </button>
-<button class="entry" onclick="showIdAllClients()" style="margin-top:10px; background-color:#9C27B0; color:white; padding:5px 10px; border:none; border-radius:4px; cursor:pointer;">
+<button class="entry entry-purple" onclick="showIdAllClients()">
   Show My ID (All Clients)
 </button>
-<button class="entry" onclick="document.getElementById('sendImageAllInput').click()" style="margin-top:10px; background-color:#E91E63; color:white; padding:5px 10px; border:none; border-radius:4px; cursor:pointer;">
+<button class="entry entry-pink" onclick="document.getElementById('sendImageAllInput').click()">
   Send Image To All Active
 </button>
-<input type="file" id="sendImageAllInput" accept="image/*" style="display:none" onchange="sendImageFileToAllActive(this)">
+<input type="file" id="sendImageAllInput" accept="image/*" class="hidden-input" onchange="sendImageFileToAllActive(this)">
 </div>
 
 
  <p><a href="/">Back Home</a> | <a href="/audit">View Audit Log</a></p>
  <script src="/static/js/state.js"></script>
  <script src="/static/js/utils.js"></script>
+ <script src="/static/js/auth-api.js"></script>
  <script src="/static/js/auth.js"></script>
  <script src="/static/js/clients.js"></script>
  <script src="/static/js/bulk.js"></script>

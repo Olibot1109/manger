@@ -58,9 +58,7 @@ if (!clientID) {
 }
 
 function sendAudit(action, target, details, success) {
-  var performer = authSession.currentLabel || 'anonymous';
   var body = JSON.stringify({
-    performer: performer,
     action: action,
     target: target || 'system',
     details: details || {},

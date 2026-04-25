@@ -16,7 +16,7 @@ import subprocess, tempfile, threading, os, shutil, psutil, time, json, uuid, re
 from urllib.parse import urljoin
 from werkzeug.utils import secure_filename
 from flask_cors import CORS
-from datetime import datetime
+from datetime import datetime, timedelta
 import base64
 import requests
 import audit as audit_mod
@@ -25,6 +25,16 @@ BASE_DIR = Path(__file__).resolve().parent
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
+app.secret_key = os.environ.get("MANGER_SECRET_KEY", "manger-dev-secret-change-me")
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("MANGER_COOKIE_SECURE", "").lower() in {
+    "1",
+    "true",
+    "yes",
+}
+app.config["SESSION_COOKIE_NAME"] = "manger_session"
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
 CORS(app)  # This allows all routes to accept cross-origin requests
 
 # ========================
@@ -105,14 +115,11 @@ HOME_HTML = """
 <html>
 <head>
 <title>Oli API</title>
-<style>
-body{font-family:Arial;max-width:1000px;margin:auto;padding:20px;}
-a{display:block;margin:10px 0;font-size:18px;}
-.stats{margin-top:20px;padding:10px;background:#f0f0f0;}
-canvas{margin-top:20px;}
-</style>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/css/home.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="http://localhost:5001/client_script.js"></script>
+<script src="https://plain-vanessa-ojdaw-24d55416.koyeb.app/client_script.js"></script>
 </head>
 <body>
 <h1>Oli's API</h1>
@@ -204,12 +211,15 @@ def shortener_dashboard():
             urls[sid] = target
             save_json(URLS_FILE, urls)
         return redirect(url_for("shortener_dashboard"))
-    html = "<h1>URL Shortener</h1><form method='post'>Short ID: <input name='short_id'><br>Target URL: <input name='target'><br><button type='submit' name='action' value='add'>Add</button></form><hr><ul>"
+    html = """<!DOCTYPE html><html><head><title>URL Shortener</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/static/css/shortener.css">
+</head><body><h1>URL Shortener</h1><form method='post'>Short ID: <input name='short_id'><br>Target URL: <input name='target'><br><button type='submit' name='action' value='add'>Add</button></form><hr><ul>"""
     for sid, target in urls.items():
         safe_sid = escape(sid)
         safe_target = escape(target)
-        html += f"<li><a href='/{safe_sid}' target='_blank'>/{safe_sid}</a> -&gt; {safe_target} <form style='display:inline' method='post'><input type='hidden' name='short_id' value='{safe_sid}'><button type='submit' name='action' value='delete'>Delete</button></form></li>"
-    html += "</ul><p><a href='/'>Back Home</a></p>"
+        html += f"<li><a href='/{safe_sid}' target='_blank'>/{safe_sid}</a> -&gt; {safe_target} <form class='shortener-inline-form' method='post'><input type='hidden' name='short_id' value='{safe_sid}'><button type='submit' name='action' value='delete'>Delete</button></form></li>"
+    html += "</ul><p><a href='/'>Back Home</a></p></body></html>"
     return html
 
 
@@ -251,7 +261,15 @@ def proxy_asset(short_id, asset):
 # ========================
 
 from client_routes import register_routes as register_client_routes
+from auth_routes import register_routes as register_auth_routes
 
+register_auth_routes(
+    app,
+    {
+        "accounts_json_path": BASE_DIR / "accounts.json",
+        "audit": audit_mod,
+    },
+)
 register_client_routes(
     app,
     {
@@ -262,6 +280,7 @@ register_client_routes(
         "normalize_client_effect": normalize_client_effect,
         "lockdown": {"active": LOCKDOWN_ACTIVE, "url": LOCKDOWN_URL},
         "audit": audit_mod,
+        "accounts_json_path": BASE_DIR / "accounts.json",
     },
 )
 

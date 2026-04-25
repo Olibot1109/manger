@@ -4,7 +4,6 @@ from html import escape
 from pathlib import Path
 import re
 import time
-import json
 import uuid
 from threading import RLock
 
@@ -16,15 +15,19 @@ from flask import (
     redirect,
     render_template_string,
     request,
-    send_from_directory,
     url_for,
-    abort,
+)
+
+from account_auth import (
+    find_account_by_password,
+    get_authenticated_account,
+    is_action_allowed,
+    load_accounts,
 )
 
 
 BASE_DIR = Path(__file__).resolve().parent
 ROUTE_KEY = "manger"
-CLIENTS_HTML = (BASE_DIR / "client-manger.html").read_text()
 CLIENT_SCRIPT_HTML = """
 <!DOCTYPE html><html><head><title>Client Script</title></head><body>
 <h1>Client Script Loader</h1>
@@ -42,21 +45,17 @@ AUDIT_LOGIN_HTML = """
 <html>
 <head>
   <title>Audit Log Login</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; }
-    input { padding: 8px; font-size: 16px; width: 200px; }
-    button { padding: 8px 16px; font-size: 16px; cursor: pointer; }
-    .error { color: red; margin-top: 10px; }
-  </style>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/css/audit.css">
 </head>
-<body>
+<body class="audit-login">
   <h2>Audit Log Access</h2>
   <p>Enter admin password to view audit logs:</p>
   <form id="loginForm">
     <input type="password" id="password" placeholder="Password" required autofocus>
     <button type="submit">Login</button>
   </form>
-  <p class="error" id="errorMsg" style="display:none;"></p>
+  <p class="audit-error" id="errorMsg"></p>
   <p><a href="/clients">Back to Client Manager</a></p>
   <script>
     document.getElementById('loginForm').onsubmit = function(e) {
@@ -97,6 +96,8 @@ def register_routes(app, state):
     clients_json_path = state["clients_json_path"]
     lockdown_state = state["lockdown"]
     audit_mod = state.get("audit")
+    accounts_path = state.get("accounts_json_path")
+    cookie_secure = bool(app.config.get("SESSION_COOKIE_SECURE"))
 
     def audit_log(performer, action, target="system", details=None, success=True):
         if audit_mod:
@@ -106,6 +107,14 @@ def register_routes(app, state):
                 )
             except Exception as e:
                 print("Audit log error:", e)
+
+    def require_auth(action=None):
+        account = get_authenticated_account(accounts_path)
+        if not account:
+            return None, (jsonify({"error": "Unauthorized"}), 401)
+        if action and not is_action_allowed(action, account):
+            return None, (jsonify({"error": "Forbidden"}), 403)
+        return account, None
 
     def decode_xor_hex(value):
         if not value:
@@ -148,10 +157,13 @@ def register_routes(app, state):
 
     @app.route("/clients", methods=["GET"])
     def clients_index():
-        return render_template_string(CLIENTS_HTML)
+        return render_template_string((BASE_DIR / "client-manger.html").read_text())
 
     @app.route("/clients.json")
     def clients_json():
+        account, error = require_auth()
+        if error:
+            return error
         now = datetime.utcnow()
         with data_lock:
             snapshot = dict(clients)
@@ -197,8 +209,11 @@ def register_routes(app, state):
 
     @app.route("/clients/ban", methods=["POST"])
     def ban_client():
+        account, error = require_auth("ban")
+        if error:
+            return error
         username = request.form.get("username", "").strip()
-        performer = request.form.get("performer", "anonymous")
+        performer = account["label"]
         if not username:
             return redirect(url_for("clients_index"))
         with data_lock:
@@ -211,8 +226,11 @@ def register_routes(app, state):
 
     @app.route("/clients/unban", methods=["POST"])
     def unban_client():
+        account, error = require_auth("unban")
+        if error:
+            return error
         username = request.form.get("username", "").strip()
-        performer = request.form.get("performer", "anonymous")
+        performer = account["label"]
         with data_lock:
             if username in clients:
                 clients[username]["banned"] = False
@@ -224,8 +242,11 @@ def register_routes(app, state):
 
     @app.route("/clients/delete", methods=["POST"])
     def delete_client():
+        account, error = require_auth("delete")
+        if error:
+            return error
         username = request.form.get("username", "").strip()
-        performer = request.form.get("performer", "anonymous")
+        performer = account["label"]
         with data_lock:
             if username in clients:
                 del clients[username]
@@ -235,8 +256,11 @@ def register_routes(app, state):
 
     @app.route("/clients/image", methods=["POST"])
     def send_image_to_client():
+        account, error = require_auth("image")
+        if error:
+            return error
         username = request.form.get("username", "").strip()
-        performer = request.form.get("performer", "anonymous")
+        performer = account["label"]
         file = request.files.get("image_file")
         image_base64 = request.form.get("image", "").strip()
 
@@ -275,8 +299,11 @@ def register_routes(app, state):
 
     @app.route("/clients/message", methods=["POST"])
     def send_message_to_client():
+        account, error = require_auth("message")
+        if error:
+            return error
         username = request.form.get("username", "").strip()
-        performer = request.form.get("performer", "anonymous")
+        performer = account["label"]
         message = request.form.get("message", "").strip()
 
         if username and message:
@@ -289,8 +316,11 @@ def register_routes(app, state):
 
     @app.route("/clients/question", methods=["POST"])
     def send_question_to_client():
+        account, error = require_auth("question")
+        if error:
+            return error
         username = request.form.get("username", "").strip()
-        performer = request.form.get("performer", "anonymous")
+        performer = account["label"]
         question = request.form.get("question", "").strip()
         answer = request.form.get("answer", "").strip().lower()
 
@@ -336,8 +366,11 @@ def register_routes(app, state):
 
     @app.route("/clients/timeout", methods=["POST"])
     def send_timeout_to_client():
+        account, error = require_auth("timeout")
+        if error:
+            return error
         username = request.form.get("username", "").strip()
-        performer = request.form.get("performer", "anonymous")
+        performer = account["label"]
         duration = request.form.get("duration", "").strip()
         reason = request.form.get("reason", "").strip()
 
@@ -368,8 +401,11 @@ def register_routes(app, state):
 
     @app.route("/clients/timeout/clear", methods=["POST"])
     def clear_timeout_on_client():
+        account, error = require_auth("untimeout")
+        if error:
+            return error
         username = request.form.get("username", "").strip()
-        performer = request.form.get("performer", "anonymous")
+        performer = account["label"]
 
         if not username:
             return redirect(url_for("clients_index"))
@@ -387,8 +423,11 @@ def register_routes(app, state):
 
     @app.route("/clients/note", methods=["POST"])
     def set_client_note():
+        account, error = require_auth("notes")
+        if error:
+            return error
         username = request.form.get("username", "").strip()
-        performer = request.form.get("performer", "anonymous")
+        performer = account["label"]
         note = request.form.get("note", "").strip()
 
         if username:
@@ -407,17 +446,11 @@ def register_routes(app, state):
     def client_script_js():
         return Response(CLIENT_SCRIPT_JS, content_type="application/javascript")
 
-    @app.route("/accounts.json")
-    def accounts_json():
-        accounts_path = BASE_DIR / "accounts.json"
-        if accounts_path.exists():
-            return send_from_directory(
-                BASE_DIR, "accounts.json", mimetype="application/json"
-            )
-        return jsonify([])
-
     @app.route("/clients/redirect", methods=["POST"])
     def redirect_client():
+        account, error = require_auth("redirect")
+        if error:
+            return error
         username = request.form.get("username", "").strip()
         url = (
             decode_xor_hex(request.form.get("u", "").strip())
@@ -433,6 +466,9 @@ def register_routes(app, state):
 
     @app.route("/clients/effect", methods=["POST"])
     def set_client_effect():
+        account, error = require_auth("effect")
+        if error:
+            return error
         username = request.form.get("username", "").strip()
         effect = normalize_client_effect(request.form.get("effect", ""))
 
@@ -445,27 +481,38 @@ def register_routes(app, state):
 
     @app.route("/clients/<path:subpath>", methods=["POST"])
     def clients_fallback(subpath):
+        account, error = require_auth()
+        if error:
+            return error
         username = request.form.get("username", "").strip()
         if not username:
             return redirect(url_for("clients_index"))
 
         if "note" in request.form:
+            if not is_action_allowed("notes", account):
+                return jsonify({"error": "Forbidden"}), 403
             note = request.form.get("note", "").strip()
             with data_lock:
                 clients.setdefault(username, {})["note"] = note
                 save_json(clients_json_path, clients)
         elif "effect" in request.form:
+            if not is_action_allowed("effect", account):
+                return jsonify({"error": "Forbidden"}), 403
             effect = normalize_client_effect(request.form.get("effect", ""))
             with data_lock:
                 clients.setdefault(username, {})["effect"] = effect
                 save_json(clients_json_path, clients)
         elif "message" in request.form:
+            if not is_action_allowed("message", account):
+                return jsonify({"error": "Forbidden"}), 403
             message = request.form.get("message", "").strip()
             if message:
                 with data_lock:
                     clients.setdefault(username, {})["message"] = message
                     save_json(clients_json_path, clients)
         elif "question" in request.form:
+            if not is_action_allowed("question", account):
+                return jsonify({"error": "Forbidden"}), 403
             question = request.form.get("question", "").strip()
             with data_lock:
                 client = clients.setdefault(username, {})
@@ -495,6 +542,8 @@ def register_routes(app, state):
                     )
                     save_json(clients_json_path, clients)
         elif "timeout" in request.form or "duration" in request.form:
+            if not is_action_allowed("timeout", account):
+                return jsonify({"error": "Forbidden"}), 403
             duration = (
                 request.form.get("timeout", "").strip()
                 or request.form.get("duration", "").strip()
@@ -511,6 +560,8 @@ def register_routes(app, state):
                     client["timeout_duration_seconds"] = seconds
                     save_json(clients_json_path, clients)
         else:
+            if not is_action_allowed("redirect", account):
+                return jsonify({"error": "Forbidden"}), 403
             url = (
                 decode_xor_hex(request.form.get("u", "").strip())
                 or request.form.get("url", "").strip()
@@ -527,8 +578,11 @@ def register_routes(app, state):
         # Accept JSON from browser to log client-side events (login/logout, etc.)
         if not request.is_json:
             return jsonify({"error": "JSON required"}), 400
+        account = get_authenticated_account(accounts_path)
+        if not account:
+            return jsonify({"error": "Unauthorized"}), 401
         data = request.get_json() or {}
-        performer = data.get("performer", "anonymous")
+        performer = account["label"]
         action = data.get("action", "")
         target = data.get("target", "system")
         details = data.get("details", {})
@@ -550,21 +604,9 @@ def register_routes(app, state):
         password = (data.get("password") or "").strip()
         if not password:
             return jsonify({"error": "Password required"}), 400
-        accounts_path = BASE_DIR / "accounts.json"
-        if not accounts_path.exists():
-            return jsonify({"error": "Accounts not configured"}), 500
-        try:
-            with open(accounts_path, "r") as f:
-                accounts = json.load(f)
-            if not isinstance(accounts, list):
-                accounts = []
-        except Exception:
-            accounts = []
-        valid = any(
-            isinstance(acc, dict) and acc.get("password") == password
-            for acc in accounts
-        )
-        if not valid:
+        accounts = load_accounts(accounts_path)
+        account = find_account_by_password(password, accounts)
+        if not account:
             return jsonify({"error": "Invalid password"}), 403
         token = str(uuid.uuid4())
         expiry = time.time() + (60 * 60 * 8)  # 8 hours
@@ -572,14 +614,19 @@ def register_routes(app, state):
             _audit_sessions[token] = expiry
         resp = jsonify({"ok": True})
         resp.set_cookie(
-            "audit_session", token, max_age=60 * 60 * 8, httponly=True, samesite="Lax"
+            "audit_session",
+            token,
+            max_age=60 * 60 * 8,
+            httponly=True,
+            samesite="Lax",
+            secure=cookie_secure,
         )
         return resp
 
     @app.route("/audit/logout")
     def audit_logout():
         resp = make_response(redirect(url_for("audit_viewer")))
-        resp.set_cookie("audit_session", "", max_age=0, expires=0)
+        resp.set_cookie("audit_session", "", max_age=0, expires=0, secure=cookie_secure)
         return resp
 
     @app.route("/audit")
@@ -765,6 +812,9 @@ def register_routes(app, state):
 
     @app.route("/lockdown", methods=["POST"])
     def lockdown():
+        account, error = require_auth("lockdown")
+        if error:
+            return error
         action = request.form.get("action")
 
         if action == "on":

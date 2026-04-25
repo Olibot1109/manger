@@ -1,10 +1,22 @@
 // Client management functions
 
 function loadClients() {
+  if (!isSessionValid()) {
+    var stats = document.getElementById('clientStats');
+    if (stats) {
+      stats.textContent = 'Login required to view clients.';
+    }
+    return Promise.resolve({});
+  }
+
   var current = ++requestSeq;
   return fetch(ROUTES.clientsJson + '?_=' + Date.now(), { cache: 'no-store' })
     .then(function(r) {
-      if (!r.ok) throw new Error('Failed to load clients');
+      if (!r.ok) {
+        var err = new Error('Failed to load clients');
+        err.status = r.status;
+        throw err;
+      }
       return r.json();
     })
     .then(function(data) {
@@ -13,11 +25,20 @@ function loadClients() {
       return data;
     })
     .catch(function(err) {
-      console.error(err);
       if (current === requestSeq) {
         var stats = document.getElementById('clientStats');
-        if (stats) stats.textContent = 'Unable to load clients';
+        if (stats) {
+          stats.textContent = err && err.status === 401 ? 'Login required to view clients.' : 'Unable to load clients';
+        }
+        if (err && err.status === 401 && typeof applyAuthState === 'function') {
+          applyAuthState(null);
+          updateAuthStatus();
+        }
       }
+      if (err && err.status === 401) {
+        return {};
+      }
+      console.error(err);
       throw err;
     });
 }
@@ -60,24 +81,22 @@ function renderClients(clients) {
     var user = entry[0];
     var data = entry[1];
     var row = document.createElement('tr');
-    row.className = data.recent ? 'recent' : 'inactive';
+    row.className = (data.recent ? 'recent' : 'inactive');
     var statusText = '';
 
     var statusInfo = '';
-    var statusBg = '';
     if (data.banned) {
-      statusInfo = '<span style="color:blue;font-weight:bold;">Banned</span>';
-      statusBg = '#ccddff';
+      statusInfo = '<span class="status-text status-banned">Banned</span>';
+      row.classList.add('status-banned-row');
     } else if (data.timeout_active) {
-      statusInfo = '<span style="color:orange;font-weight:bold;">Timeout ' + formatDurationLabel(data.timeout_remaining_seconds || 0) + '</span>';
-      statusBg = '#ffe4b5';
+      statusInfo = '<span class="status-text status-timeout">Timeout ' + formatDurationLabel(data.timeout_remaining_seconds || 0) + '</span>';
+      row.classList.add('status-timeout-row');
     }
     if (statusInfo) {
       var onlineStatus = data.recent ? 'Online' : 'Offline';
-      statusText = '<span style="color:' + (data.recent ? 'green' : 'gray') + ';">' + onlineStatus + '</span> (' + statusInfo + ')';
-      row.style.backgroundColor = statusBg;
+      statusText = '<span class="status-text ' + (data.recent ? 'status-online' : 'status-offline') + '">' + onlineStatus + '</span> (' + statusInfo + ')';
     } else {
-      statusText = (data.recent ? '<span style="color:green;">Active</span>' : 'Inactive');
+      statusText = '<span class="status-text ' + (data.recent ? 'status-active' : 'status-offline') + '">' + (data.recent ? 'Active' : 'Inactive') + '</span>';
     }
 
     var existing = existingRows[user];
@@ -95,20 +114,22 @@ function renderClients(clients) {
       '<td>' + escapeHtml(user) + '</td>' +
       '<td>' + statusText + '</td>' +
       '<td>' + escapeHtml(data.last_ping || 'Never') + '</td>' +
-      '<td>' + (data.current_url ? '<a href="' + escapeHtml(data.current_url) + '" target="_blank">' + escapeHtml(data.current_url) + '</a>' : '<span style="color:gray;">Unknown</span>') + '</td>' +
+      '<td>' + (data.current_url ? '<a href="' + escapeHtml(data.current_url) + '" target="_blank">' + escapeHtml(data.current_url) + '</a>' : '<span class="cell-muted">Unknown</span>') + '</td>' +
       '<td>' + escapeHtml(effectLabel(data.effect || '')) + '</td>' +
-      '<td>' + (data.question ? escapeHtml(data.question) : '<span style="color:gray;">None</span>') + '</td>' +
-      '<td>' + (answerVal ? '<strong>' + escapeHtml(answerVal) + '</strong>' : '<span style="color:gray;">Pending</span>') + '</td>' +
+      '<td>' + (data.question ? escapeHtml(data.question) : '<span class="cell-muted">None</span>') + '</td>' +
+      '<td>' + (answerVal ? '<strong>' + escapeHtml(answerVal) + '</strong>' : '<span class="cell-muted">Pending</span>') + '</td>' +
       '<td data-user="' + escapeHtml(user) + '">' +
-        '<div class="action-group ban-group" style="background-color: #ffcccc;"><button class="btn-toggle-ban" style="background-color:#ff4444;color:white;" ' + (data.timeout_active ? 'disabled' : '') + '>' + (data.banned ? 'Unban' : 'Ban') + '</button></div>' +
-        '<div class="action-group redirect-group" style="background-color: #cce5ff;"><input class="inp-url" placeholder="URL" value="' + escapeHtml(urlVal) + '"><button class="btn-redirect" style="background-color:#0066cc;color:white;">Redirect</button></div>' +
-        '<div class="action-group image-group" style="background-color: #e6ccff;"><input type="file" class="inp-img"><button class="btn-img" style="background-color:#9900cc;color:white;">Image</button></div>' +
-        '<div class="action-group message-group" style="background-color: #ccffcc;"><input class="inp-msg" placeholder="Message" value="' + escapeHtml(msgVal) + '"><button class="btn-msg" style="background-color:#00cc00;color:white;">Message</button></div>' +
-        '<div class="action-group question-group" style="background-color: #ffe0cc;"><input class="inp-question" placeholder="Yes/No question" value="' + escapeHtml(questionVal) + '"><button class="btn-question" style="background-color:#cc6600;color:white;">Ask</button> <button class="btn-clear-question" style="background-color:#cc9933;color:white;">Clear Ask</button></div>' +
-        '<div class="action-group timeout-group" style="background-color: #ffcccc;">' + (data.timeout_active ? '<button class="btn-untimeout" style="background-color:#cc0066;color:white;">Untimeout</button>' : '<input class="inp-timeout-duration" placeholder="2m 20s" value="' + escapeHtml(timeoutDurationVal) + '"><input class="inp-timeout-reason" placeholder="Timeout reason" value="' + escapeHtml(timeoutReasonVal) + '"><button class="btn-timeout" style="background-color:#cc0066;color:white;" ' + (data.banned ? 'disabled' : '') + '>Timeout</button>') + '</div>' +
-        '<div class="action-group note-group" style="background-color: #ccffcc;"><input class="inp-note" placeholder="Note" value="' + escapeHtml(noteVal) + '"><button class="btn-note" style="background-color:#009900;color:white;">Save Note</button></div>' +
-        '<div class="action-group effect-group" style="background-color: #e6ccff;"><select class="inp-effect">' + effectOptionsHtml(effectValue) + '</select><button class="btn-effect" style="background-color:#6600cc;color:white;">Apply Effect</button> <button class="btn-effect-clear" style="background-color:#9966cc;color:white;">Reset Effect</button></div>' +
-        '<div class="action-group delete-group" style="background-color: #ffcccc;"><button class="btn-delete" style="background-color:#cc0000;color:white;">Delete</button></div>' +
+        '<div class="action-cell">' +
+        '<div class="action-group ban-group"><button class="action-button btn-toggle-ban" ' + (data.timeout_active ? 'disabled' : '') + '>' + (data.banned ? 'Unban' : 'Ban') + '</button></div>' +
+        '<div class="action-group redirect-group"><input class="inp-url" placeholder="URL" value="' + escapeHtml(urlVal) + '"><button class="action-button btn-redirect">Redirect</button></div>' +
+        '<div class="action-group image-group"><input type="file" class="inp-img"><button class="action-button btn-img">Image</button></div>' +
+        '<div class="action-group message-group"><input class="inp-msg" placeholder="Message" value="' + escapeHtml(msgVal) + '"><button class="action-button btn-msg">Message</button></div>' +
+        '<div class="action-group question-group"><input class="inp-question" placeholder="Yes/No question" value="' + escapeHtml(questionVal) + '"><button class="action-button btn-question">Ask</button> <button class="action-button btn-clear-question">Clear Ask</button></div>' +
+        '<div class="action-group timeout-group">' + (data.timeout_active ? '<button class="action-button btn-untimeout">Untimeout</button>' : '<input class="inp-timeout-duration" placeholder="2m 20s" value="' + escapeHtml(timeoutDurationVal) + '"><input class="inp-timeout-reason" placeholder="Timeout reason" value="' + escapeHtml(timeoutReasonVal) + '"><button class="action-button btn-timeout" ' + (data.banned ? 'disabled' : '') + '>Timeout</button>') + '</div>' +
+        '<div class="action-group note-group"><input class="inp-note" placeholder="Note" value="' + escapeHtml(noteVal) + '"><button class="action-button btn-note">Save Note</button></div>' +
+        '<div class="action-group effect-group"><select class="inp-effect">' + effectOptionsHtml(effectValue) + '</select><button class="action-button btn-effect">Apply Effect</button> <button class="action-button btn-effect-clear">Reset Effect</button></div>' +
+        '<div class="action-group delete-group"><button class="action-button btn-delete">Delete</button></div>' +
+        '</div>' +
       '</td>';
     table.appendChild(row);
   });
@@ -118,14 +139,20 @@ function renderClients(clients) {
 
 function banClient(btn) {
   var user = btn.closest('td').getAttribute('data-user');
-  var body = 'username=' + encodeURIComponent(user) + '&performer=' + encodeURIComponent(authSession.currentLabel || '');
-  return fetch(ROUTES.clientBan, {method: 'POST', body: body, headers: {'Content-Type': 'application/x-www-form-urlencoded'}}).then(loadClients);
+  return fetch(ROUTES.clientBan, {
+    method: 'POST',
+    body: 'username=' + encodeURIComponent(user),
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+  }).then(loadClients);
 }
 
 function unbanClient(btn) {
   var user = btn.closest('td').getAttribute('data-user');
-  var body = 'username=' + encodeURIComponent(user) + '&performer=' + encodeURIComponent(authSession.currentLabel || '');
-  return fetch(ROUTES.clientUnban, {method: 'POST', body: body, headers: {'Content-Type': 'application/x-www-form-urlencoded'}}).then(loadClients);
+  return fetch(ROUTES.clientUnban, {
+    method: 'POST',
+    body: 'username=' + encodeURIComponent(user),
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+  }).then(loadClients);
 }
 
 function toggleBan(btn) {
@@ -143,7 +170,7 @@ function deleteClient(btn) {
   if (!confirm('Delete ' + user + '?')) return;
   return fetch(ROUTES.clientDelete, {
     method: 'POST',
-    body: 'username=' + encodeURIComponent(user) + '&performer=' + encodeURIComponent(authSession.currentLabel || ''),
+    body: 'username=' + encodeURIComponent(user),
     headers: {'Content-Type': 'application/x-www-form-urlencoded'}
   }).then(loadClients);
 }
@@ -153,7 +180,7 @@ function sendMessage(btn, msg) {
   if (!msg) return;
   return fetch(ROUTES.clientMessage, {
     method: 'POST',
-    body: 'username=' + encodeURIComponent(user) + '&message=' + encodeURIComponent(msg) + '&performer=' + encodeURIComponent(authSession.currentLabel || ''),
+    body: 'username=' + encodeURIComponent(user) + '&message=' + encodeURIComponent(msg),
     headers: {'Content-Type': 'application/x-www-form-urlencoded'}
   }).then(loadClients);
 }
@@ -163,7 +190,7 @@ function sendRedirect(btn, url) {
   if (!url) return;
   return fetch(ROUTES.clientRedirect, {
     method: 'POST',
-    body: 'username=' + encodeURIComponent(user) + '&u=' + encodeRouteValue(url) + '&performer=' + encodeURIComponent(authSession.currentLabel || ''),
+    body: 'username=' + encodeURIComponent(user) + '&u=' + encodeRouteValue(url),
     headers: {'Content-Type': 'application/x-www-form-urlencoded'}
   }).then(loadClients);
 }
@@ -172,7 +199,7 @@ function sendEffect(btn, effect) {
   var user = btn.closest('td').getAttribute('data-user');
   return fetch(ROUTES.clientEffect, {
     method: 'POST',
-    body: 'username=' + encodeURIComponent(user) + '&effect=' + encodeURIComponent(effect || '') + '&performer=' + encodeURIComponent(authSession.currentLabel || ''),
+    body: 'username=' + encodeURIComponent(user) + '&effect=' + encodeURIComponent(effect || ''),
     headers: {'Content-Type': 'application/x-www-form-urlencoded'}
   }).then(loadClients);
 }
@@ -181,7 +208,7 @@ function sendNote(btn, note) {
   var user = btn.closest('td').getAttribute('data-user');
   return fetch(ROUTES.clientNote, {
     method: 'POST',
-    body: 'username=' + encodeURIComponent(user) + '&note=' + encodeURIComponent(note || '') + '&performer=' + encodeURIComponent(authSession.currentLabel || ''),
+    body: 'username=' + encodeURIComponent(user) + '&note=' + encodeURIComponent(note || ''),
     headers: {'Content-Type': 'application/x-www-form-urlencoded'}
   }).then(loadClients);
 }
@@ -190,7 +217,7 @@ function sendQuestion(btn, question) {
   var user = btn.closest('td').getAttribute('data-user');
   return fetch(ROUTES.clientQuestion, {
     method: 'POST',
-    body: 'username=' + encodeURIComponent(user) + '&question=' + encodeURIComponent(question || '') + '&performer=' + encodeURIComponent(authSession.currentLabel || ''),
+    body: 'username=' + encodeURIComponent(user) + '&question=' + encodeURIComponent(question || ''),
     headers: {'Content-Type': 'application/x-www-form-urlencoded'}
   }).then(loadClients);
 }
@@ -200,7 +227,7 @@ function sendTimeout(btn, duration, reason) {
   if (!duration) return;
   return fetch(ROUTES.clientTimeout, {
     method: 'POST',
-    body: 'username=' + encodeURIComponent(user) + '&duration=' + encodeURIComponent(duration) + '&reason=' + encodeURIComponent(reason || '') + '&performer=' + encodeURIComponent(authSession.currentLabel || ''),
+    body: 'username=' + encodeURIComponent(user) + '&duration=' + encodeURIComponent(duration) + '&reason=' + encodeURIComponent(reason || ''),
     headers: {'Content-Type': 'application/x-www-form-urlencoded'}
   }).then(loadClients);
 }
@@ -209,7 +236,7 @@ function clearClientTimeout(btn) {
   var user = btn.closest('td').getAttribute('data-user');
   return fetch(ROUTES.clientTimeoutClear, {
     method: 'POST',
-    body: 'username=' + encodeURIComponent(user) + '&performer=' + encodeURIComponent(authSession.currentLabel || ''),
+    body: 'username=' + encodeURIComponent(user),
     headers: {'Content-Type': 'application/x-www-form-urlencoded'}
   }).then(loadClients);
 }

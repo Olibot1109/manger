@@ -7,7 +7,7 @@
     "deniedActions": []
   },
   {
-    "password": "2013",
+    "password": "2000",
     "label": "tomas",
     "mode": "deny",
     "allowedActions": [],
@@ -30,6 +30,13 @@
   {
     "password": "12345",
     "label": "Noodle",
+    "mode": "deny",
+    "allowedActions": [],
+    "deniedActions": ["redirect", "redirectAll", "lockdown"]
+  },
+  {
+    "password": "2703",
+    "label": "Bean",
     "mode": "deny",
     "allowedActions": [],
     "deniedActions": ["redirect", "redirectAll", "lockdown"]

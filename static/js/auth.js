@@ -161,13 +161,13 @@ function updateAuthStatus() {
     el.classList.add('authenticated');
     var label = escapeHtml(authSession.currentLabel || 'Signed in');
     el.innerHTML =
-      '| <span class="auth-label">Logged in as ' +
+      '<span class="auth-label">Logged in as ' +
       label +
       '</span> <button class="auth-logout" onclick="logout()">Logout</button>';
   } else {
     el.classList.remove('authenticated');
     el.innerHTML =
-      '| <span class="auth-label">Not logged in</span> <button class="auth-login" onclick="handleManualLogin()">Login</button>';
+      '<span class="auth-label">Not logged in</span> <button class="auth-login" onclick="handleManualLogin()">Login</button>';
   }
 }
 

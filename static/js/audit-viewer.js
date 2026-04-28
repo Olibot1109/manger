@@ -4,6 +4,7 @@ var AUDIT_KNOWN_ACTIONS = [
   'delete',
   'delete_all',
   'effect',
+  'clear_cookies',
   'image',
   'image_all',
   'image_displayed',

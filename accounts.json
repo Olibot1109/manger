@@ -35,13 +35,6 @@
     "deniedActions": ["redirect", "redirectAll", "lockdown"]
   },
   {
-    "password": "2703",
-    "label": "Bean",
-    "mode": "deny",
-    "allowedActions": [],
-    "deniedActions": ["redirect", "redirectAll", "lockdown"]
-  },
-  {
     "password": "Lex12",
     "label": "Lexi",
     "mode": "allow",

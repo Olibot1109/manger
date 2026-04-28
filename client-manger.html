@@ -1,74 +1,104 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Client Manager</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/static/css/client-manager.css">
 </head>
-<body>
-Client Manager <span id="auth-bar" class="auth-bar"></span>
-<br>
-<button class="toolbar-button" onclick="loadClients()">Refresh</button>
-<button id="btn-auto" class="toolbar-button" onclick="toggleAutoRefresh()">Auto Refresh</button>
+<body class="client-manager-page">
+<main class="dashboard-shell">
+  <section class="hero-panel">
+    <div class="hero-copy">
+      <p class="eyebrow">Operations dashboard</p>
+      <h1>Client Manager</h1>
+      <p class="hero-description">Live control for clients, actions, and bulk workflow without the clutter.</p>
+    </div>
+    <div class="hero-meta">
+      <span id="auth-bar" class="auth-bar"></span>
+    </div>
+  </section>
 
-<select id="filterSelect" class="control-select">
-<option value="all">All</option>
-<option value="active">Active</option>
-<option value="banned">Banned</option>
-<option value="inactive">Inactive</option>
-</select>
-<select id="sortSelect" class="control-select">
-<option value="recent">Sort by Recent</option>
-<option value="name">Sort by Name</option>
-<option value="url">Sort by URL</option>
-</select>
-<div id="clientStats" class="stats-line"></div>
-<button id="btn-delete-all" class="toolbar-button danger" onclick="deleteAll()">Delete All</button>
+  <section class="toolbar-panel">
+    <div class="toolbar-row">
+      <button class="toolbar-button" onclick="loadClients()">Refresh</button>
+      <button id="btn-auto" class="toolbar-button" onclick="toggleAutoRefresh()">Auto Refresh</button>
 
-<button id="btn-lockdown" class="toolbar-button accent" onclick="if(this.textContent==='LOCKDOWN'){promptLockdown()}else{disableLockdown()}">LOCKDOWN</button>
-<button class="toolbar-button purple" onclick="showIdAllClients()">Show My ID (All)</button>
-<table id="clientsTable">
-<tr>
-  <th>Username</th>
-  <th>Status</th>
-  <th>Last Ping</th>
-  <th>Current URL</th>
-  <th>Effect</th>
-  <th>Question</th>
-  <th>Response</th>
-  <th>Timeout</th>
-  <th>Actions</th>
-</tr>
-</table>
+      <select id="filterSelect" class="control-select">
+        <option value="all">All</option>
+        <option value="active">Active</option>
+        <option value="banned">Banned</option>
+        <option value="inactive">Inactive</option>
+      </select>
+      <select id="sortSelect" class="control-select">
+        <option value="recent">Sort by Recent</option>
+        <option value="name">Sort by Name</option>
+        <option value="url">Sort by URL</option>
+      </select>
 
-<div class="manager" id="image_manager_global">
-<button class="entry entry-green" onclick="redirectAllActive()">
-  Redirect All Active Clients
-</button>
-<button class="entry entry-blue" onclick="messageAllActive()">
-  Message All Active Clients
-</button>
-<button class="entry entry-orange" onclick="askAllActive()">
-  Ask All Active Clients
-</button>
-<button class="entry entry-purple" onclick="showIdAllClients()">
-  Show My ID (All Clients)
-</button>
-<button class="entry entry-pink" onclick="document.getElementById('sendImageAllInput').click()">
-  Send Image To All Active
-</button>
-<input type="file" id="sendImageAllInput" accept="image/*" class="hidden-input" onchange="sendImageFileToAllActive(this)">
-</div>
+      <div id="clientStats" class="stats-line"></div>
+    </div>
 
+    <div class="toolbar-row toolbar-row-actions">
+      <button id="btn-delete-all" class="toolbar-button danger" onclick="deleteAll()">Delete All</button>
+      <button id="btn-lockdown" class="toolbar-button accent" onclick="if(this.textContent==='LOCKDOWN'){promptLockdown()}else{disableLockdown()}">LOCKDOWN</button>
+      <button class="toolbar-button purple" onclick="showIdAllClients()">Show My ID (All)</button>
+    </div>
+  </section>
 
- <p><a href="/">Back Home</a> | <a href="/audit">View Audit Log</a></p>
- <script src="/static/js/state.js"></script>
- <script src="/static/js/utils.js"></script>
- <script src="/static/js/auth-api.js"></script>
- <script src="/static/js/auth.js"></script>
- <script src="/static/js/clients.js"></script>
- <script src="/static/js/bulk.js"></script>
- <script src="/static/js/ui.js"></script>
- <script src="/static/js/main.js"></script>
+  <section class="table-panel">
+    <div class="table-shell">
+      <table id="clientsTable">
+        <tr>
+          <th>Username</th>
+          <th>Status</th>
+          <th>Last Ping</th>
+          <th>Current URL</th>
+          <th>Effect</th>
+          <th>Question</th>
+          <th>Response</th>
+          <th>Timeout</th>
+          <th>Actions</th>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <section class="manager-panel">
+    <div class="manager" id="image_manager_global">
+      <button class="entry entry-green" onclick="redirectAllActive()">
+        Redirect All Active Clients
+      </button>
+      <button class="entry entry-blue" onclick="messageAllActive()">
+        Message All Active Clients
+      </button>
+      <button class="entry entry-orange" onclick="askAllActive()">
+        Ask All Active Clients
+      </button>
+      <button class="entry entry-purple" onclick="showIdAllClients()">
+        Show My ID (All Clients)
+      </button>
+      <button class="entry entry-pink" onclick="document.getElementById('sendImageAllInput').click()">
+        Send Image To All Active
+      </button>
+      <input type="file" id="sendImageAllInput" accept="image/*" class="hidden-input" onchange="sendImageFileToAllActive(this)">
+    </div>
+  </section>
+
+  <footer class="page-footer">
+    <a href="/">Back Home</a>
+    <span class="footer-divider">|</span>
+    <a href="/audit">View Audit Log</a>
+  </footer>
+</main>
+<script src="/static/js/state.js"></script>
+<script src="/static/js/utils.js"></script>
+<script src="/static/js/auth-api.js"></script>
+<script src="/static/js/auth.js"></script>
+<script src="/static/js/clients.js"></script>
+<script src="/static/js/bulk.js"></script>
+<script src="/static/js/ui.js"></script>
+<script src="/static/js/main.js"></script>
 </body>
 </html>

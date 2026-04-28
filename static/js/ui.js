@@ -98,6 +98,9 @@ function initTableListeners() {
       var msg = td.querySelector('.inp-msg').value;
       if (!(await pass('message'))) return;
       sendMessage(btn, msg);
+    } else if (btn.classList.contains('btn-clear-cookies')) {
+      if (!(await pass('message'))) return;
+      sendClearCookies(btn);
     } else if (btn.classList.contains('btn-img')) {
       if (!(await pass('image'))) return;
       var f = td.querySelector('.inp-img').files[0];

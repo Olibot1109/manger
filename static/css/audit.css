@@ -138,6 +138,11 @@ body.audit-login {
   font-weight: bold;
 }
 
+.action-clear_cookies {
+  color: #0f766e;
+  font-weight: bold;
+}
+
 .action-status_check {
   color: #6b7280;
 }

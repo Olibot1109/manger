@@ -7,3 +7,5 @@
 {"id":"20260425141741035307","timestamp":"2026-04-25T14:17:41Z","performer":"ojdaw","action":"ban","target":"IHpNnI8l","details":{},"success":true,"ip":"192.168.1.146"}
 {"id":"20260425141743168352","timestamp":"2026-04-25T14:17:43Z","performer":"ojdaw","action":"unban","target":"IHpNnI8l","details":{},"success":true,"ip":"192.168.1.146"}
 {"id":"20260425142539168537","timestamp":"2026-04-25T14:25:39Z","performer":"ojdaw","action":"login","target":"system","details":{"permissions":"deny"},"success":true,"ip":"127.0.0.1"}
+{"id":"20260428173833879759","timestamp":"2026-04-28T17:38:33Z","performer":"ojdaw","action":"ban","target":"IHpNnI8l","details":{},"success":true,"ip":"192.168.1.146"}
+{"id":"20260428173834474426","timestamp":"2026-04-28T17:38:34Z","performer":"ojdaw","action":"unban","target":"IHpNnI8l","details":{},"success":true,"ip":"192.168.1.146"}

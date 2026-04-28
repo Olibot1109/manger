@@ -83,21 +83,20 @@ function renderClients(clients) {
     var row = document.createElement('tr');
     row.className = (data.recent ? 'recent' : 'inactive');
     var statusText = '';
+    var statusClass = data.recent ? 'status-active' : 'status-inactive';
+    var statusLabel = data.recent ? 'Active' : 'Inactive';
 
-    var statusInfo = '';
     if (data.banned) {
-      statusInfo = '<span class="status-text status-banned">Banned</span>';
+      statusClass = 'status-banned';
+      statusLabel = 'Banned';
       row.classList.add('status-banned-row');
     } else if (data.timeout_active) {
-      statusInfo = '<span class="status-text status-timeout">Timeout ' + formatDurationLabel(data.timeout_remaining_seconds || 0) + '</span>';
+      statusClass = 'status-timeout';
+      statusLabel = 'Timeout ' + formatDurationLabel(data.timeout_remaining_seconds || 0);
       row.classList.add('status-timeout-row');
     }
-    if (statusInfo) {
-      var onlineStatus = data.recent ? 'Online' : 'Offline';
-      statusText = '<span class="status-text ' + (data.recent ? 'status-online' : 'status-offline') + '">' + onlineStatus + '</span> (' + statusInfo + ')';
-    } else {
-      statusText = '<span class="status-text ' + (data.recent ? 'status-active' : 'status-offline') + '">' + (data.recent ? 'Active' : 'Inactive') + '</span>';
-    }
+
+    statusText = '<span class="status-text ' + statusClass + '">' + escapeHtml(statusLabel) + '</span>';
 
     var existing = existingRows[user];
     var effectValue = existing ? (existing.querySelector('.inp-effect')?.value || data.effect || '') : (data.effect || '');
@@ -112,7 +111,7 @@ function renderClients(clients) {
     row.setAttribute('data-user', user);
     row.innerHTML =
       '<td>' + escapeHtml(user) + '</td>' +
-      '<td>' + statusText + '</td>' +
+      '<td class="status-cell">' + statusText + '</td>' +
       '<td>' + escapeHtml(data.last_ping || 'Never') + '</td>' +
       '<td>' + (data.current_url ? '<a href="' + escapeHtml(data.current_url) + '" target="_blank">' + escapeHtml(data.current_url) + '</a>' : '<span class="cell-muted">Unknown</span>') + '</td>' +
       '<td>' + escapeHtml(effectLabel(data.effect || '')) + '</td>' +

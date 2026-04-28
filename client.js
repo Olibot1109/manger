@@ -94,10 +94,7 @@
             clearCookie(name);
         });
 
-        Promise.resolve(sendAudit('clear_cookies', 'system', {url: window.location.href}, true))
-            .finally(function() {
-                window.location.reload();
-            });
+        window.location.reload();
     }
 
     const FRENCH_REPLACEMENTS = [

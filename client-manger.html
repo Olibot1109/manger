@@ -11,9 +11,7 @@
 <main class="dashboard-shell">
   <section class="hero-panel">
     <div class="hero-copy">
-      <p class="eyebrow">Operations dashboard</p>
       <h1>Client Manager</h1>
-      <p class="hero-description">Live control for clients, actions, and bulk workflow without the clutter.</p>
     </div>
     <div class="hero-meta">
       <span id="auth-bar" class="auth-bar"></span>
@@ -43,7 +41,7 @@
     <div class="toolbar-row toolbar-row-actions">
       <button id="btn-delete-all" class="toolbar-button danger" onclick="deleteAll()">Delete All</button>
       <button id="btn-lockdown" class="toolbar-button accent" onclick="if(this.textContent==='LOCKDOWN'){promptLockdown()}else{disableLockdown()}">LOCKDOWN</button>
-      <button class="toolbar-button purple" onclick="showIdAllClients()">Show My ID (All)</button>
+      <button class="toolbar-button purple" onclick="showIdAllClients()">Show ID</button>
     </div>
   </section>
 
@@ -77,7 +75,7 @@
         Ask All Active Clients
       </button>
       <button class="entry entry-purple" onclick="showIdAllClients()">
-        Show My ID (All Clients)
+        Show ID to All
       </button>
       <button class="entry entry-pink" onclick="document.getElementById('sendImageAllInput').click()">
         Send Image To All Active

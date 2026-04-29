@@ -75,7 +75,7 @@ function renderClients(clients) {
   var timeoutCount = Object.values(clients).filter(function(d) { return d.timeout_active; }).length;
   var totalCount = Object.keys(clients).length;
 
-  table.innerHTML = '<tr><th>Username</th><th>Status</th><th>Last Ping</th><th>Current URL</th><th>Effect</th><th>Question</th><th>Response</th><th>Actions</th></tr>';
+  table.innerHTML = '<tr><th>Username</th><th>Status</th><th>Last Ping</th><th>Current URL</th><th>Effect</th><th>Actions</th></tr>';
 
   filtered.forEach(function(entry) {
     var user = entry[0];
@@ -103,10 +103,8 @@ function renderClients(clients) {
     var urlVal = existing ? (existing.querySelector('.inp-url')?.value || '') : '';
     var msgVal = existing ? (existing.querySelector('.inp-msg')?.value || '') : '';
     var noteVal = existing ? (existing.querySelector('.inp-note')?.value || data.note || '') : (data.note || '');
-    var questionVal = existing ? (existing.querySelector('.inp-question')?.value || data.question || '') : (data.question || '');
     var timeoutDurationVal = existing ? (existing.querySelector('.inp-timeout-duration')?.value || '') : '';
     var timeoutReasonVal = existing ? (existing.querySelector('.inp-timeout-reason')?.value || data.timeout_reason || '') : (data.timeout_reason || '');
-    var answerVal = data.question_answer || '';
 
     row.setAttribute('data-user', user);
     row.innerHTML =
@@ -115,7 +113,6 @@ function renderClients(clients) {
       '<td>' + escapeHtml(data.last_ping || 'Never') + '</td>' +
       '<td>' + (data.current_url ? '<a href="' + escapeHtml(data.current_url) + '" target="_blank">' + escapeHtml(data.current_url) + '</a>' : '<span class="cell-muted">Unknown</span>') + '</td>' +
       '<td>' + escapeHtml(effectLabel(data.effect || '')) + '</td>' +
-      '<td>' + (data.question ? escapeHtml(data.question) : '<span class="cell-muted">None</span>') + '</td>' +
       '<td>' + (answerVal ? '<strong>' + escapeHtml(answerVal) + '</strong>' : '<span class="cell-muted">Pending</span>') + '</td>' +
       '<td data-user="' + escapeHtml(user) + '">' +
         '<div class="action-cell">' +
@@ -124,7 +121,6 @@ function renderClients(clients) {
         '<div class="action-group image-group"><input type="file" class="inp-img"><button class="action-button btn-img">Image</button></div>' +
         '<div class="action-group message-group"><input class="inp-msg" placeholder="Message" value="' + escapeHtml(msgVal) + '"><button class="action-button btn-msg">Message</button></div>' +
         '<div class="action-group clear-group"><button class="action-button btn-clear-cookies" title="Ask this client to clear its cookies and reload">Clear Cookies</button></div>' +
-        '<div class="action-group question-group"><input class="inp-question" placeholder="Yes/No question" value="' + escapeHtml(questionVal) + '"><button class="action-button btn-question">Ask</button> <button class="action-button btn-clear-question">Clear Ask</button></div>' +
         '<div class="action-group timeout-group">' + (data.timeout_active ? '<button class="action-button btn-untimeout">Untimeout</button>' : '<input class="inp-timeout-duration" placeholder="2m 20s" value="' + escapeHtml(timeoutDurationVal) + '"><input class="inp-timeout-reason" placeholder="Timeout reason" value="' + escapeHtml(timeoutReasonVal) + '"><button class="action-button btn-timeout" ' + (data.banned ? 'disabled' : '') + '>Timeout</button>') + '</div>' +
         '<div class="action-group note-group"><input class="inp-note" placeholder="Note" value="' + escapeHtml(noteVal) + '"><button class="action-button btn-note">Save Note</button></div>' +
         '<div class="action-group effect-group"><select class="inp-effect">' + effectOptionsHtml(effectValue) + '</select><button class="action-button btn-effect">Apply Effect</button> <button class="action-button btn-effect-clear">Reset Effect</button></div>' +
@@ -222,15 +218,6 @@ function sendNote(btn, note) {
   return fetch(ROUTES.clientNote, {
     method: 'POST',
     body: 'username=' + encodeURIComponent(user) + '&note=' + encodeURIComponent(note || ''),
-    headers: {'Content-Type': 'application/x-www-form-urlencoded'}
-  }).then(loadClients);
-}
-
-function sendQuestion(btn, question) {
-  var user = btn.closest('td').getAttribute('data-user');
-  return fetch(ROUTES.clientQuestion, {
-    method: 'POST',
-    body: 'username=' + encodeURIComponent(user) + '&question=' + encodeURIComponent(question || ''),
     headers: {'Content-Type': 'application/x-www-form-urlencoded'}
   }).then(loadClients);
 }

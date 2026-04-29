@@ -314,56 +314,6 @@ def register_routes(app, state):
 
         return redirect(url_for("clients_index"))
 
-    @app.route("/clients/question", methods=["POST"])
-    def send_question_to_client():
-        account, error = require_auth("question")
-        if error:
-            return error
-        username = request.form.get("username", "").strip()
-        performer = account["label"]
-        question = request.form.get("question", "").strip()
-        answer = request.form.get("answer", "").strip().lower()
-
-        if not username:
-            return redirect(url_for("clients_index"))
-
-        action_name = None
-        details = {}
-        with data_lock:
-            client = clients.setdefault(username, {})
-            if question:
-                client["question"] = question
-                client["question_answer"] = None
-                client["question_asked_at"] = datetime.utcnow().strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
-                client["question_answered_at"] = None
-                save_json(clients_json_path, clients)
-                action_name = "question"
-                details = {"question": question}
-            elif not question and not answer:
-                # Clear question if empty question sent
-                client["question"] = None
-                client["question_answer"] = None
-                client["question_asked_at"] = None
-                client["question_answered_at"] = None
-                save_json(clients_json_path, clients)
-                action_name = "question_clear"
-            elif answer in {"yes", "no"}:
-                client["question_answer"] = answer
-                client["question"] = None
-                client["question_answered_at"] = datetime.utcnow().strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
-                save_json(clients_json_path, clients)
-                action_name = "question_answer"
-                details = {"answer": answer}
-
-        if action_name:
-            audit_log(performer, action_name, username, details, True)
-
-        return redirect(url_for("clients_index"))
-
     @app.route("/clients/timeout", methods=["POST"])
     def send_timeout_to_client():
         account, error = require_auth("timeout")
@@ -509,37 +459,6 @@ def register_routes(app, state):
             if message:
                 with data_lock:
                     clients.setdefault(username, {})["message"] = message
-                    save_json(clients_json_path, clients)
-        elif "question" in request.form:
-            if not is_action_allowed("question", account):
-                return jsonify({"error": "Forbidden"}), 403
-            question = request.form.get("question", "").strip()
-            with data_lock:
-                client = clients.setdefault(username, {})
-                if question:
-                    client["question"] = question
-                    client["question_answer"] = None
-                    client["question_asked_at"] = datetime.utcnow().strftime(
-                        "%Y-%m-%d %H:%M:%S"
-                    )
-                    client["question_answered_at"] = None
-                    save_json(clients_json_path, clients)
-                else:
-                    client["question"] = None
-                    client["question_answer"] = None
-                    client["question_asked_at"] = None
-                    client["question_answered_at"] = None
-                    save_json(clients_json_path, clients)
-        elif "answer" in request.form:
-            answer = request.form.get("answer", "").strip().lower()
-            if answer in {"yes", "no"}:
-                with data_lock:
-                    client = clients.setdefault(username, {})
-                    client["question_answer"] = answer
-                    client["question"] = None
-                    client["question_answered_at"] = datetime.utcnow().strftime(
-                        "%Y-%m-%d %H:%M:%S"
-                    )
                     save_json(clients_json_path, clients)
         elif "timeout" in request.form or "duration" in request.form:
             if not is_action_allowed("timeout", account):
@@ -698,10 +617,6 @@ def register_routes(app, state):
                     "audio": None,
                     "message": None,
                     "note": None,
-                    "question": None,
-                    "question_answer": None,
-                    "question_asked_at": None,
-                    "question_answered_at": None,
                     "timeout_reason": None,
                     "timeout_set_at": None,
                     "timeout_until": None,
@@ -724,10 +639,6 @@ def register_routes(app, state):
                     "audio": None,
                     "message": None,
                     "note": "",
-                    "question": None,
-                    "question_answer": None,
-                    "question_asked_at": None,
-                    "question_answered_at": None,
                     "timeout_reason": None,
                     "timeout_set_at": None,
                     "timeout_until": None,
@@ -774,8 +685,6 @@ def register_routes(app, state):
                 clients[user]["message"] = None
 
             note_text = status.get("note")
-            question_text = status.get("question")
-            question_answer = status.get("question_answer")
 
             last_ping = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
             clients[user]["last_ping"] = last_ping
@@ -793,10 +702,6 @@ def register_routes(app, state):
                 "audio": audio_b64,
                 "message": message_text,
                 "note": note_text,
-                "question": question_text,
-                "question_answer": question_answer,
-                "question_asked_at": status.get("question_asked_at"),
-                "question_answered_at": status.get("question_answered_at"),
                 "timeout_reason": status.get("timeout_reason"),
                 "timeout_set_at": status.get("timeout_set_at"),
                 "timeout_until": status.get("timeout_until"),

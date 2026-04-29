@@ -118,8 +118,6 @@ HOME_HTML = """
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="/static/css/home.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="http://localhost:5001/client_script.js"></script>
-<script src="https://plain-vanessa-ojdaw-24d55416.koyeb.app/client_script.js"></script>
 </head>
 <body>
 <h1>Oli's API</h1>

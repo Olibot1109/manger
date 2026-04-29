@@ -19,7 +19,6 @@ var ROUTES = Object.freeze({
   clientUnban: '/clients/unban',
   clientDelete: '/clients/delete',
   clientMessage: '/clients/message',
-  clientQuestion: '/clients/question',
   clientTimeout: '/clients/timeout',
   clientTimeoutClear: '/clients/timeout/clear',
   clientRedirect: '/clients/redirect',

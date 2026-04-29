@@ -15,13 +15,13 @@ function init() {
     }).catch(function() {});
     setInterval(function() {
       refreshAuthState(true).catch(function() {});
-    }, 30000);
+    }, 3000);
   } else {
     loadClients().catch(function() {});
   }
 
   updateLockdownBtn();
-  setInterval(updateLockdownBtn, 30000);
+  setInterval(updateLockdownBtn, 3000);
 }
 
 if (document.readyState === 'loading') {

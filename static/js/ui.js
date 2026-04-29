@@ -119,12 +119,6 @@ function initTableListeners() {
     } else if (btn.classList.contains('btn-note')) {
       if (!(await pass('notes'))) return;
       sendNote(btn, td.querySelector('.inp-note').value);
-    } else if (btn.classList.contains('btn-question')) {
-      if (!(await pass('question'))) return;
-      sendQuestion(btn, td.querySelector('.inp-question').value);
-    } else if (btn.classList.contains('btn-clear-question')) {
-      if (!(await pass('question'))) return;
-      sendQuestion(btn, '');
     } else if (btn.classList.contains('btn-timeout')) {
       if (!(await pass('timeout'))) return;
       sendTimeout(btn, td.querySelector('.inp-timeout-duration').value, td.querySelector('.inp-timeout-reason').value);

@@ -7,13 +7,11 @@ toggleban
 redirect
 effect
 notes
-question
 timeout
 untimeout
 deleteAll
 redirectAll
 messageAll
-askAll
 showIdAll
 sendImageAll
 lockdown

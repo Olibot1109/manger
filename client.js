@@ -657,7 +657,7 @@
                  }
                  if (data.lockdown) {
                      applyEffect('');
-                     showStatusScreen('lockdown', 'LOCKDOWN', '#6600cc', '5rem');
+                     showStatusScreen('lockdown', '', '#FFFFFF', '5rem');
                      clearTimeoutPrompt();
                      return;
                  } else {

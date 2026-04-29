@@ -99,7 +99,7 @@ function initTableListeners() {
       if (!(await pass('message'))) return;
       sendMessage(btn, msg);
     } else if (btn.classList.contains('btn-clear-cookies')) {
-      if (!(await pass('message'))) return;
+      if (!(await pass('cooke'))) return;
       sendClearCookies(btn);
     } else if (btn.classList.contains('btn-img')) {
       if (!(await pass('image'))) return;

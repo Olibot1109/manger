@@ -16,9 +16,6 @@ body.client-manager-page {
   font-family: Arial, sans-serif;
   color: var(--text);
   background: #ffffff;
-  /* iPad fix: prevent iOS Safari zoom on inputs and enable smooth scrolling */
-  -webkit-text-size-adjust: 100%;
-  touch-action: manipulation;
 }
 
 body.client-manager-page a {
@@ -33,9 +30,6 @@ body.client-manager-page a:hover {
 .dashboard-shell {
   width: min(1280px, 100%);
   margin: 0 auto;
-  /* iPad fix: never exceed viewport width */
-  max-width: 100vw;
-  overflow-x: hidden;
 }
 
 .hero-panel,
@@ -55,9 +49,6 @@ body.client-manager-page a:hover {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  /* iPad fix: allow wrapping to prevent overflow */
-  flex-wrap: wrap;
-  min-width: 0;
 }
 
 .hero-copy h1 {
@@ -106,8 +97,6 @@ body.client-manager-page a:hover {
   color: var(--text);
   cursor: pointer;
   transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, filter 140ms ease;
-  /* iPad fix: bigger tap targets for fingers */
-  min-height: 44px;
 }
 
 .auth-bar .auth-login,
@@ -239,15 +228,11 @@ body.client-manager-page a:hover {
   background: #ffffff;
   padding: 8px 10px;
   color: var(--text);
-  /* iPad fix: prevent iOS zoom by keeping font-size at least 16px */
-  font-size: max(12px, 16px);
 }
 
 .table-panel {
   padding: 0;
   overflow-x: auto;
-  /* iPad fix: smooth momentum scroll on iOS */
-  -webkit-overflow-scrolling: touch;
 }
 
 table {
@@ -262,9 +247,6 @@ td {
   text-align: left;
   vertical-align: top;
   font-size: 14px;
-  /* iPad fix: stop long text from busting layout */
-  word-break: break-word;
-  overflow-wrap: anywhere;
 }
 
 th {
@@ -354,8 +336,6 @@ tr:nth-child(even) td {
 
 td a {
   overflow-wrap: anywhere;
-  /* iPad fix: stop long URLs from busting layout */
-  word-break: break-word;
 }
 
 .action-cell {
@@ -376,8 +356,6 @@ td a {
   border-radius: 4px;
   background: #fafafa;
   min-width: 0;
-  /* iPad fix: allow wrapping so they don't overflow cells */
-  flex-wrap: wrap;
 }
 
 .action-group input:not([type="file"]),
@@ -390,8 +368,7 @@ td a {
   background: #ffffff;
   color: var(--text);
   font: inherit;
-  /* iPad fix: prevent iOS zoom by keeping font-size at least 16px */
-  font-size: max(12px, 16px);
+  font-size: 12px;
 }
 
 .action-group input.inp-timeout-duration {
@@ -654,119 +631,4 @@ td a {
   .hero-copy h1 {
     font-size: 22px;
   }
-}
-
-/* iPad fix: fine-tune breakpoints for iPad portrait and landscape */
-@media (max-width: 1024px) {
-  body.client-manager-page {
-    padding: 12px;
-  }
-
-  .action-cell {
-    grid-template-columns: 1fr;
-  }
-
-  .toolbar-panel,
-  .toolbar-row,
-  .toolbar-row-actions {
-    gap: 10px;
-  }
-
-  .stats-line {
-    width: 100%;
-    margin-left: 0;
-    margin-top: 4px;
-  }
-}
-
-/* iPad fix: keep two-column actions in landscape if space permits */
-@media (min-width: 1025px) and (max-width: 1280px) {
-  .action-cell {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-/* iPad fix: remove sticky hover states on touch devices */
-@media (hover: none) and (pointer: coarse) {
-  .toolbar-button:hover,
-  .action-button:hover,
-  .entry:hover,
-  .auth-bar .auth-login:hover,
-  .auth-bar .auth-logout:hover {
-    filter: none;
-    background-color: initial;
-  }
-
-  .toolbar-button {
-    background: #eef2ff;
-  }
-
-  .toolbar-button.danger,
-  .action-button.btn-delete {
-    background: #fee2e2;
-  }
-
-  .toolbar-button.accent {
-    background: #ede9fe;
-  }
-
-  .toolbar-button.purple {
-    background: #f5f3ff;
-  }
-
-  .toolbar-button.locked {
-    background: #dcfce7;
-  }
-
-  .toolbar-button.auto-active {
-    background: #fef3c7;
-  }
-
-  .auth-bar .auth-login {
-    background: #dbeafe;
-  }
-
-  .auth-bar .auth-logout {
-    background: #fee2e2;
-  }
-
-  .entry.entry-green {
-    background: #dcfce7;
-  }
-
-  .entry.entry-blue {
-    background: #dbeafe;
-  }
-
-  .entry.entry-orange {
-    background: #ffedd5;
-  }
-
-  .entry.entry-purple {
-    background: #ede9fe;
-  }
-
-  .entry.entry-pink {
-    background: #fce7f3;
-  }
-}
-
-/* iPad fix: prevent callout menus on rapid taps for UI elements */
-.hero-panel,
-.toolbar-panel,
-.action-cell,
-.action-button {
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-/* iPad fix: re-enable text selection for actual content */
-td,
-.entry,
-.control-select,
-input,
-select {
-  -webkit-user-select: auto;
-  user-select: auto;
 }

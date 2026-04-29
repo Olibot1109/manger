@@ -113,7 +113,6 @@ function renderClients(clients) {
       '<td>' + escapeHtml(data.last_ping || 'Never') + '</td>' +
       '<td>' + (data.current_url ? '<a href="' + escapeHtml(data.current_url) + '" target="_blank">' + escapeHtml(data.current_url) + '</a>' : '<span class="cell-muted">Unknown</span>') + '</td>' +
       '<td>' + escapeHtml(effectLabel(data.effect || '')) + '</td>' +
-      '<td>' + (answerVal ? '<strong>' + escapeHtml(answerVal) + '</strong>' : '<span class="cell-muted">Pending</span>') + '</td>' +
       '<td data-user="' + escapeHtml(user) + '">' +
         '<div class="action-cell">' +
         '<div class="action-group ban-group"><button class="action-button btn-toggle-ban" ' + (data.timeout_active ? 'disabled' : '') + '>' + (data.banned ? 'Unban' : 'Ban') + '</button></div>' +

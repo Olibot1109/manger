@@ -1,23 +1,55 @@
 body {
-  font-family: Arial, sans-serif;
+  font-family: "Segoe UI", Arial, sans-serif;
   max-width: 1000px;
-  margin: auto;
-  padding: 20px;
+  margin: 0 auto;
+  padding: 24px;
+  line-height: 1.6;
+  background-color: #fafafa;
+  color: #333;
 }
 
+/* Links */
 a {
   display: block;
-  margin: 10px 0;
+  margin: 12px 0;
   font-size: 18px;
+  color: #0077cc;
+  text-decoration: none;
+  transition: color 0.2s ease, transform 0.1s ease;
 }
 
+a:hover {
+  color: #005fa3;
+  transform: translateX(3px);
+}
+
+/* Stats box */
 .stats {
-  margin-top: 20px;
-  padding: 10px;
-  background: #f0f0f0;
+  margin-top: 24px;
+  padding: 16px;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  border-left: 5px solid #0077cc;
 }
 
+/* Canvas styling */
 canvas {
-  margin-top: 20px;
+  display: block;
+  margin: 30px auto 0;
+  max-width: 100%;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
+/* Optional: improve responsiveness */
+@media (max-width: 600px) {
+  body {
+    padding: 16px;
+  }
+
+  a {
+    font-size: 16px;
+  }
+}

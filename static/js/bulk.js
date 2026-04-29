@@ -68,33 +68,6 @@ async function messageAllActive() {
   });
 }
 
-async function askAllActive() {
-  if (!(await pass('askAll'))) return;
-  var question = prompt("Enter question to ask all active clients:");
-  if (!question) return;
-  if (!confirm("Ask all active clients this question?\n\n" + question)) return;
-
-  fetch(ROUTES.clientsJson).then(r => r.json()).then(function(clients) {
-    var promises = [];
-    var activeCount = 0;
-    for (var [user, data] of Object.entries(clients)) {
-      if (data.recent) {
-        activeCount++;
-        promises.push(fetch(ROUTES.clientQuestion, {
-          method: 'POST',
-          body: 'username=' + encodeURIComponent(user) + '&question=' + encodeURIComponent(question),
-          headers: {'Content-Type': 'application/x-www-form-urlencoded'}
-        }));
-      }
-    }
-    Promise.all(promises).then(function() {
-      if (typeof sendAudit === 'function') {
-        sendAudit('question_all', 'system', {question: question, count: activeCount}, true);
-      }
-    }).then(loadClients);
-  });
-}
-
 async function showIdAllClients() {
   if (!(await pass('showIdAll'))) return;
   if (!confirm("Show each client's ID on their screen for 5 seconds?")) return;

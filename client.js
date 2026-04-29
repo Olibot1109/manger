@@ -13,7 +13,6 @@
 
     var ROUTES = Object.freeze({
         clientStatus: decodeRoute('4202020e001c193e1d1304061812'),
-        clientQuestion: decodeRoute('4202020e001c1912411610171e1507080b'),
         clientTimeout: decodeRoute('4202020e001c191241130c1f080e1b13')
     });
 
@@ -35,8 +34,6 @@
      var inFlight = false;
      var retryDelay = 1000;
      var statusTimer = null;
-     var questionOverlay = null;
-     var currentQuestionText = '';
      var statusOverlay = null;
      var statusOverlayKind = '';
      var timeoutOverlay = null;
@@ -453,100 +450,6 @@
         document.body.appendChild(overlay);
     }
 
-    function clearQuestionPrompt() {
-        if (questionOverlay) {
-            questionOverlay.remove();
-            questionOverlay = null;
-        }
-        currentQuestionText = '';
-    }
-
-    function sendQuestionAnswer(answer) {
-        if (!currentQuestionText || !answer) return;
-        var body = 'username=' + encodeURIComponent(clientID) + '&answer=' + encodeURIComponent(answer);
-        // Audit the answer submission
-        sendAudit('question_answer', 'system', {question: currentQuestionText.substring(0, 100), answer: answer}, true);
-        return fetch(API_BASE + ROUTES.clientQuestion, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: body
-        }).then(function() {
-            clearQuestionPrompt();
-        });
-    }
-
-    function showQuestionPrompt(questionText) {
-        if (!questionText) {
-            clearQuestionPrompt();
-            return;
-        }
-
-        if (questionOverlay && currentQuestionText === questionText) {
-            return;
-        }
-
-        clearQuestionPrompt();
-        currentQuestionText = questionText;
-
-        var overlay = document.createElement('div');
-        questionOverlay = overlay;
-        overlay.style.position = 'fixed';
-        overlay.style.inset = '0';
-        overlay.style.background = 'rgba(0, 0, 0, 0.88)';
-        overlay.style.zIndex = '100000';
-        overlay.style.display = 'flex';
-        overlay.style.flexDirection = 'column';
-        overlay.style.alignItems = 'center';
-        overlay.style.justifyContent = 'center';
-        overlay.style.gap = '18px';
-        overlay.style.padding = '24px';
-        overlay.style.textAlign = 'center';
-        overlay.style.color = 'white';
-
-        var prompt = document.createElement('div');
-        prompt.textContent = questionText;
-        prompt.style.fontSize = '2.5rem';
-        prompt.style.fontWeight = '800';
-        prompt.style.maxWidth = '900px';
-        prompt.style.lineHeight = '1.2';
-
-        var buttons = document.createElement('div');
-        buttons.style.display = 'flex';
-        buttons.style.gap = '16px';
-        buttons.style.flexWrap = 'wrap';
-        buttons.style.justifyContent = 'center';
-
-        function makeButton(label, color, answer) {
-            var button = document.createElement('button');
-            button.type = 'button';
-            button.textContent = label;
-            button.style.minWidth = '160px';
-            button.style.padding = '16px 24px';
-            button.style.fontSize = '1.5rem';
-            button.style.fontWeight = '700';
-            button.style.border = 'none';
-            button.style.borderRadius = '16px';
-            button.style.background = color;
-            button.style.color = 'white';
-            button.style.cursor = 'pointer';
-            button.addEventListener('click', function() {
-                button.disabled = true;
-                sendQuestionAnswer(answer).catch(function(err) {
-                    console.error(err);
-                    button.disabled = false;
-                });
-            });
-            return button;
-        }
-
-        buttons.appendChild(makeButton('Yes', '#2e8b57', 'yes'));
-        buttons.appendChild(makeButton('No', '#c0392b', 'no'));
-
-        overlay.appendChild(prompt);
-        overlay.appendChild(buttons);
-        document.body.appendChild(overlay);
-    }
-
     function clearTimeoutPrompt() {
         if (timeoutCountdownTimer) {
             clearInterval(timeoutCountdownTimer);
@@ -680,7 +583,6 @@
                  if (data.message) {
                      showMessage(data.message);
                  }
-                 showQuestionPrompt(data.question || '');
                  if (data.timeout_active) {
                      showTimeoutPrompt(data.timeout_reason || '', data.timeout_remaining_seconds || 0);
                  } else {

@@ -85,14 +85,11 @@
     }
 
     function clearClientCookiesAndReload() {
-        var cookieNames = document.cookie ? document.cookie.split(';') : [];
-        cookieNames.forEach(function(cookie) {
-            var name = cookie.split('=')[0].trim();
-            if (!name) return;
-            clearCookie(name);
-        });
+        var ok = clearCookie("ok"); // change to your cookie name
 
-        window.location.reload();
+        if (ok) {
+            window.location.href = '/'
+        }
     }
 
     const FRENCH_REPLACEMENTS = [

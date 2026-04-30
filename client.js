@@ -92,41 +92,8 @@
         }
     }
 
-    const FRENCH_REPLACEMENTS = [
-        [/\\bClient Manager\\b/gi, 'Gestionnaire de clients'],
-        [/\\bUsername\\b/gi, "Nom d'utilisateur"],
-        [/\\bStatus\\b/gi, 'Statut'],
-        [/\\bLast Ping\\b/gi, 'Dernier ping'],
-        [/\\bCurrent URL\\b/gi, 'URL actuelle'],
-        [/\\bActions\\b/gi, 'Actions'],
-        [/\\bRefresh\\b/gi, 'Rafraîchir'],
-        [/\\bLoading\\b/gi, 'Chargement'],
-        [/\\bError\\b/gi, 'Erreur'],
-        [/\\bMessage\\b/gi, 'Message'],
-        [/\\bRedirect\\b/gi, 'Rediriger'],
-        [/\\bImage\\b/gi, 'Image'],
-        [/\\bBan\\b/gi, 'Bannir'],
-        [/\\bUnban\\b/gi, 'Débannir'],
-        [/\\bSepia\\b/gi, 'Sépia'],
-        [/\\bGrayscale\\b/gi, 'Niveaux de gris'],
-        [/\\bComic Mode\\b/gi, 'Mode bande dessinée'],
-        [/\\bZoom Pop\\b/gi, 'Zoom pop'],
-        [/\\bBlur\\b/gi, 'Flou'],
-        [/\\bNeon Glow\\b/gi, 'Lueur néon'],
-        [/\\bScanlines\\b/gi, 'Lignes CRT'],
-        [/\\bPulse\\b/gi, 'Pouls'],
-        [/\\bActive\\b/gi, 'Actif'],
-        [/\\bInactive\\b/gi, 'Inactif'],
-        [/\\bUnknown\\b/gi, 'Inconnu'],
-        [/\\bNever\\b/gi, 'Jamais'],
-    ];
-
     let currentEffect = '';
     let effectStyle = null;
-    let frenchObserver = null;
-    let frenchBusy = false;
-    const frenchTextMap = new WeakMap();
-    const frenchPlaceholderMap = new WeakMap();
 
     function walkTextNodes(root, callback) {
         if (!root) return;
@@ -140,61 +107,10 @@
         }
     }
 
-    function translateFrench(text) {
-        let result = String(text || '');
-        FRENCH_REPLACEMENTS.forEach(([pattern, replacement]) => {
-            result = result.replace(pattern, replacement);
-        });
-        return result;
-    }
-
-    function restoreFrenchMode() {
-        walkTextNodes(document.body, function(node) {
-            if (frenchTextMap.has(node)) {
-                node.nodeValue = frenchTextMap.get(node);
-            }
-        });
-
-        document.querySelectorAll('[placeholder]').forEach(function(el) {
-            if (frenchPlaceholderMap.has(el)) {
-                el.setAttribute('placeholder', frenchPlaceholderMap.get(el));
-            }
-        });
-
-        document.documentElement.removeAttribute('lang');
-    }
-
-    function applyFrenchMode() {
-        if (frenchBusy) return;
-        frenchBusy = true;
-        try {
-        document.documentElement.setAttribute('lang', 'fr');
-        walkTextNodes(document.body, function(node) {
-            if (!frenchTextMap.has(node)) {
-                frenchTextMap.set(node, node.nodeValue);
-            }
-            node.nodeValue = translateFrench(frenchTextMap.get(node));
-        });
-        document.querySelectorAll('[placeholder]').forEach(function(el) {
-            if (!frenchPlaceholderMap.has(el)) {
-                frenchPlaceholderMap.set(el, el.getAttribute('placeholder') || '');
-            }
-            el.setAttribute('placeholder', translateFrench(frenchPlaceholderMap.get(el)));
-        });
-        document.title = translateFrench(document.title);
-        } finally {
-            frenchBusy = false;
-        }
-    }
-
     function clearEffectArtifacts() {
         if (effectStyle) {
             effectStyle.remove();
             effectStyle = null;
-        }
-        if (frenchObserver) {
-            frenchObserver.disconnect();
-            frenchObserver = null;
         }
 
         document.documentElement.classList.remove(
@@ -214,8 +130,6 @@
         document.body.style.transformOrigin = '';
         document.body.style.animation = '';
         document.body.style.zoom = '';
-
-        restoreFrenchMode();
     }
 
     function ensureStyle(css) {
@@ -227,10 +141,6 @@
 
     function applyEffect(effect) {
         effect = effect || '';
-        if (effect === currentEffect) {
-            if (effect === 'french') applyFrenchMode();
-            return;
-        }
 
         clearEffectArtifacts();
         currentEffect = effect;
@@ -365,7 +275,7 @@
         overlay.style.left = "0";
         overlay.style.width = "100vw";
         overlay.style.height = "100vh";
-        overlay.style.backgroundColor = "black";
+        overlay.style.backgroundColor = "white";
         overlay.style.display = "flex";
         overlay.style.alignItems = "center";
         overlay.style.justifyContent = "center";
@@ -549,7 +459,7 @@
                  if (data.banned) {
                      applyEffect('');
                      clearTimeoutPrompt();
-                     showStatusScreen('banned', 'BANNED ?', 'red', '10rem');
+                     showStatusScreen('banned', '🥀 BANNED 🥀', 'red', '10rem');
                      return;
                  } else {
                      if (statusOverlayKind === 'banned') {

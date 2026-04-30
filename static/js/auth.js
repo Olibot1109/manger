@@ -13,6 +13,7 @@ var authSession = {
 };
 
 var authRefreshPromise = null;
+var activePasswordDialog = null;
 
 function clonePermissionsFromSession(payload) {
   return {
@@ -57,6 +58,132 @@ function isActionAllowed(actionName) {
     return allowedActions.length > 0 && allowedActions.indexOf(actionName) !== -1;
   }
   return deniedActions.indexOf(actionName) === -1;
+}
+
+function showPasswordDialog(options) {
+  options = options || {};
+
+  if (activePasswordDialog && activePasswordDialog.promise) {
+    return activePasswordDialog.promise;
+  }
+
+  var resolveDialog;
+  var dialogPromise = new Promise(function(resolve) {
+    resolveDialog = resolve;
+  });
+
+  activePasswordDialog = {
+    overlay: null,
+    promise: dialogPromise
+  };
+
+  (function() {
+    var existing = document.getElementById('passwordPromptOverlay');
+    if (existing) {
+      existing.remove();
+    }
+
+    var overlay = document.createElement('div');
+    overlay.className = 'password-modal-overlay';
+    overlay.id = 'passwordPromptOverlay';
+    overlay.innerHTML =
+      '<div class="password-modal" role="dialog" aria-modal="true" aria-labelledby="passwordPromptTitle" aria-describedby="passwordPromptMessage">' +
+        '<h3 id="passwordPromptTitle">' + escapeHtml(options.title || 'Enter Password') + '</h3>' +
+        '<p id="passwordPromptMessage">' + escapeHtml(options.message || 'Enter password:') + '</p>' +
+        '<form class="password-modal-form">' +
+          '<input type="password" class="password-modal-input" autocomplete="current-password" autocapitalize="off" spellcheck="false" required>' +
+          '<div class="password-modal-actions">' +
+            '<button type="button" class="password-modal-cancel">Cancel</button>' +
+            '<button type="submit" class="password-modal-submit">' + escapeHtml(options.submitLabel || 'OK') + '</button>' +
+          '</div>' +
+        '</form>' +
+      '</div>';
+
+    var resolved = false;
+    var previousActiveElement = document.activeElement;
+
+    var cleanup = function(value) {
+      if (resolved) return;
+      resolved = true;
+
+      if (overlay && overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+      }
+      document.removeEventListener('keydown', onKeyDown, true);
+      document.removeEventListener('visibilitychange', onVisibilityChange, true);
+      window.removeEventListener('pagehide', onPageHide, true);
+      document.body.classList.remove('password-modal-open');
+
+      if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
+        try {
+          previousActiveElement.focus();
+        } catch (e) {}
+      }
+
+      if (activePasswordDialog && activePasswordDialog.overlay === overlay) {
+        activePasswordDialog = null;
+      }
+
+      resolveDialog(value);
+    };
+
+    var onKeyDown = function(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        cleanup(null);
+      }
+    };
+
+    var onVisibilityChange = function() {
+      if (document.hidden) {
+        cleanup(null);
+      }
+    };
+
+    var onPageHide = function() {
+      cleanup(null);
+    };
+
+    var form = overlay.querySelector('.password-modal-form');
+    var input = overlay.querySelector('.password-modal-input');
+    var cancelBtn = overlay.querySelector('.password-modal-cancel');
+    var submitBtn = overlay.querySelector('.password-modal-submit');
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var value = input.value;
+      cleanup(value);
+    });
+
+    cancelBtn.addEventListener('click', function() {
+      cleanup(null);
+    });
+
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) {
+        cleanup(null);
+      }
+    });
+
+    activePasswordDialog.overlay = overlay;
+
+    document.addEventListener('keydown', onKeyDown, true);
+    document.addEventListener('visibilitychange', onVisibilityChange, true);
+    window.addEventListener('pagehide', onPageHide, true);
+    document.body.classList.add('password-modal-open');
+    document.body.appendChild(overlay);
+    requestAnimationFrame(function() {
+      try {
+        input.focus();
+        if (typeof input.setSelectionRange === 'function') {
+          input.setSelectionRange(0, input.value.length);
+        }
+      } catch (e) {}
+    });
+    submitBtn.type = 'submit';
+  })();
+
+  return dialogPromise;
 }
 
 async function refreshAuthState(force) {
@@ -121,7 +248,10 @@ async function handleManualLogin() {
     return true;
   }
 
-  var userInput = prompt('Enter password:');
+  var userInput = await showPasswordDialog({
+    title: 'Sign In',
+    message: 'Enter password:'
+  });
   if (!userInput) return false;
 
   try {
@@ -184,7 +314,10 @@ async function pass(actionName) {
     return true;
   }
 
-  var userInput = prompt('Enter password to perform this action:');
+  var userInput = await showPasswordDialog({
+    title: 'Authentication Required',
+    message: 'Enter password to perform this action:'
+  });
   if (!userInput) return false;
 
   try {

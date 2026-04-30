@@ -590,6 +590,94 @@ td a {
   display: none;
 }
 
+body.password-modal-open {
+  overflow: hidden;
+  touch-action: none;
+}
+
+.password-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+.password-modal {
+  width: min(100%, 440px);
+  padding: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 18px;
+  background: #1f2937;
+  color: #f9fafb;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+.password-modal h3 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.password-modal p {
+  margin: 0 0 16px;
+  color: #d1d5db;
+}
+
+.password-modal-input {
+  width: 100%;
+  padding: 12px 14px;
+  margin: 0 0 16px;
+  border: 1px solid #94a3b8;
+  border-radius: 12px;
+  background: #111827;
+  color: #f9fafb;
+  font: inherit;
+  font-size: 16px;
+}
+
+.password-modal-input:focus {
+  outline: 2px solid #f59e0b;
+  outline-offset: 2px;
+}
+
+.password-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.password-modal-actions button {
+  min-width: 104px;
+  padding: 11px 16px;
+  border: none;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.password-modal-cancel {
+  background: #92400e;
+  color: #fff7ed;
+}
+
+.password-modal-submit {
+  background: #fdba74;
+  color: #4a2a10;
+}
+
+.password-modal-cancel:hover {
+  background: #78350f;
+}
+
+.password-modal-submit:hover {
+  background: #fed7aa;
+}
+
 @media (max-width: 900px) {
   .hero-panel {
     flex-direction: column;
@@ -661,5 +749,18 @@ td a {
 
   .hero-copy h1 {
     font-size: 22px;
+  }
+
+  .password-modal {
+    padding: 18px;
+    border-radius: 16px;
+  }
+
+  .password-modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .password-modal-actions button {
+    width: 100%;
   }
 }

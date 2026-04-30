@@ -38,7 +38,7 @@
     "password": "Lex12",
     "label": "Lexi",
     "mode": "deny",
-    "allowedActions": [],
+    "allowedActions": [ ],
     "deniedActions": []
   }
 ]

@@ -3,7 +3,9 @@
 var authSession = {
   authenticated: false,
   currentLabel: null,
+  admin: false,
   currentPermissions: {
+    admin: false,
     mode: 'deny',
     allowedActions: [],
     deniedActions: []
@@ -17,6 +19,7 @@ var activePasswordDialog = null;
 
 function clonePermissionsFromSession(payload) {
   return {
+    admin: !!(payload && payload.admin),
     mode: payload && payload.mode ? payload.mode : 'deny',
     allowedActions: Array.isArray(payload && payload.allowedActions) ? payload.allowedActions.slice() : [],
     deniedActions: Array.isArray(payload && payload.deniedActions) ? payload.deniedActions.slice() : []
@@ -27,7 +30,9 @@ function applyAuthState(payload) {
   if (!payload || !payload.authenticated) {
     authSession.authenticated = false;
     authSession.currentLabel = null;
+    authSession.admin = false;
     authSession.currentPermissions = {
+      admin: false,
       mode: 'deny',
       allowedActions: [],
       deniedActions: []
@@ -39,6 +44,7 @@ function applyAuthState(payload) {
 
   authSession.authenticated = true;
   authSession.currentLabel = payload.label || null;
+  authSession.admin = !!payload.admin;
   authSession.currentPermissions = clonePermissionsFromSession(payload);
   authSession.loginTime = payload.loginAt ? payload.loginAt * 1000 : Date.now();
   authSession.sessionFingerprint = payload.fingerprint || null;
@@ -51,7 +57,9 @@ function isSessionValid() {
 
 function isActionAllowed(actionName) {
   if (!authSession.authenticated) return false;
+  if (authSession.admin) return true;
   var perms = authSession.currentPermissions || {};
+  if (perms.admin) return true;
   var allowedActions = Array.isArray(perms.allowedActions) ? perms.allowedActions : [];
   var deniedActions = Array.isArray(perms.deniedActions) ? perms.deniedActions : [];
   if (perms.mode === "allow") {
@@ -290,10 +298,13 @@ function updateAuthStatus() {
   if (authSession.authenticated && isSessionValid()) {
     el.classList.add('authenticated');
     var label = escapeHtml(authSession.currentLabel || 'Signed in');
+    var adminBadge = authSession.admin ? '<span class="auth-badge auth-badge-admin">Admin</span>' : '';
     el.innerHTML =
       '<span class="auth-label">Logged in as ' +
       label +
-      '</span> <button class="auth-logout" onclick="logout()">Logout</button>';
+      '</span>' +
+      adminBadge +
+      ' <button class="auth-logout" onclick="logout()">Logout</button>';
   } else {
     el.classList.remove('authenticated');
     el.innerHTML =

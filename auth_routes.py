@@ -51,7 +51,7 @@ def register_routes(app, state):
             account["label"],
             "login",
             "system",
-            {"permissions": account["mode"]},
+            {"permissions": account["mode"], "admin": account["admin"]},
             True,
         )
         response = jsonify({"ok": True, "session": session_payload})

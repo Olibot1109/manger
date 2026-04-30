@@ -2,6 +2,7 @@
   {
     "password": "8812",
     "label": "ojdaw - Master",
+    "admin": true,
     "mode": "deny",
     "allowedActions": [],
     "deniedActions": []
@@ -9,6 +10,7 @@
   {
     "password": "2000",
     "label": "tomas",
+    "admin": false,
     "mode": "deny",
     "allowedActions": [],
     "deniedActions": ["redirect", "redirectAll", "lockdown", "cooke", "reload"]
@@ -16,6 +18,7 @@
   {
     "password": "bolluc112",
     "label": "Spazzy mc gee",
+    "admin": false,
     "mode": "deny",
     "allowedActions": [],
     "deniedActions": ["redirect", "redirectAll", "lockdown", "cooke", "reload"]
@@ -23,6 +26,7 @@
   {
     "password": "123",
     "label": "HELLOOO",
+    "admin": false,
     "mode": "deny",
     "allowedActions": [],
     "deniedActions": ["redirect", "redirectAll", "lockdown", "cooke", "reload"]
@@ -30,6 +34,7 @@
   {
     "password": "12345",
     "label": "Noodle",
+    "admin": false,
     "mode": "deny",
     "allowedActions": [],
     "deniedActions": ["redirect", "redirectAll", "lockdown", "cooke", "reload"]
@@ -37,6 +42,7 @@
   {
     "password": "Lex12",
     "label": "Lexi - Master",
+    "admin": true,
     "mode": "deny",
     "allowedActions": [ ],
     "deniedActions": []

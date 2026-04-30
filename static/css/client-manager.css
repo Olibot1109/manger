@@ -77,6 +77,23 @@ body.client-manager-page a:hover {
   color: var(--muted);
 }
 
+.auth-bar .auth-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.auth-bar .auth-badge-admin {
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  color: #166534;
+}
+
 .auth-bar .auth-login,
 .auth-bar .auth-logout,
 .toolbar-button,

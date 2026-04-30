@@ -43,6 +43,7 @@ def _fingerprint_account(account):
     payload = json.dumps(
         {
             "label": account["label"],
+            "admin": account["admin"],
             "mode": account["mode"],
             "allowedActions": account["allowedActions"],
             "deniedActions": account["deniedActions"],
@@ -61,6 +62,7 @@ def _normalize_account(raw):
     password = str(raw.get("password", "")).strip()
     label = str(raw.get("label", "")).strip()
     mode = str(raw.get("mode", "deny")).strip().lower()
+    admin = bool(raw.get("admin", False))
     allowed_actions = _canonical_action_list(raw.get("allowedActions"))
     denied_actions = _canonical_action_list(raw.get("deniedActions"))
 
@@ -72,6 +74,7 @@ def _normalize_account(raw):
     account = {
         "password": password,
         "label": label,
+        "admin": admin,
         "mode": mode,
         "allowedActions": allowed_actions,
         "deniedActions": denied_actions,
@@ -148,6 +151,7 @@ def get_authenticated_account(accounts_path=None):
     login_at = payload.get("loginAt")
     return {
         "label": account["label"],
+        "admin": account["admin"],
         "mode": account["mode"],
         "allowedActions": list(account["allowedActions"]),
         "deniedActions": list(account["deniedActions"]),
@@ -160,6 +164,7 @@ def serialize_account_session(account, login_at=None):
     return {
         "authenticated": True,
         "label": account["label"],
+        "admin": account["admin"],
         "mode": account["mode"],
         "allowedActions": list(account["allowedActions"]),
         "deniedActions": list(account["deniedActions"]),
@@ -187,6 +192,9 @@ def is_action_allowed(action_name, account=None):
     action_name = _canonical_action_name(action_name)
     if not action_name:
         return False
+
+    if account.get("admin"):
+        return True
 
     mode = account.get("mode", "deny")
     allowed_actions = account.get("allowedActions", [])

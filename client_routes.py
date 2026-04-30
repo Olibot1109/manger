@@ -45,18 +45,33 @@ AUDIT_LOGIN_HTML = """
 <html>
 <head>
   <title>Audit Log Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/static/css/audit.css">
 </head>
 <body class="audit-login">
-  <h2>Audit Log Access</h2>
-  <p>Enter admin password to view audit logs:</p>
-  <form id="loginForm">
-    <input type="password" id="password" placeholder="Password" required autofocus>
-    <button type="submit">Login</button>
-  </form>
-  <p class="audit-error" id="errorMsg"></p>
-  <p><a href="/clients">Back to Client Manager</a></p>
+  <div class="audit-login-card">
+    <h2>Audit Log Access</h2>
+    <p>Enter admin password to view audit logs:</p>
+    <form id="loginForm">
+      <label for="password" class="audit-password-label">Password</label>
+      <input
+        type="password"
+        id="password"
+        name="password"
+        placeholder="Password"
+        autocomplete="current-password"
+        autocapitalize="off"
+        spellcheck="false"
+        inputmode="text"
+        required
+        autofocus
+      >
+      <button type="submit">Login</button>
+    </form>
+    <p class="audit-error" id="errorMsg"></p>
+    <p><a href="/clients">Back to Client Manager</a></p>
+  </div>
   <script>
     document.getElementById('loginForm').onsubmit = function(e) {
       e.preventDefault();

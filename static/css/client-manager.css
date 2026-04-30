@@ -601,6 +601,37 @@ td a {
   }
 }
 
+@media (max-width: 1024px) {
+  body.client-manager-page {
+    padding: 14px;
+  }
+
+  .hero-panel,
+  .toolbar-panel,
+  .table-panel,
+  .manager-panel,
+  .page-footer {
+    padding: 14px;
+  }
+
+  .toolbar-row,
+  .toolbar-row-actions {
+    gap: 10px;
+  }
+
+  .toolbar-row > .toolbar-button,
+  .toolbar-row > .control-select,
+  .toolbar-row > .stats-line,
+  .toolbar-row-actions > .toolbar-button {
+    flex: 1 1 180px;
+  }
+
+  .stats-line {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
 @media (max-width: 1100px) {
   .action-cell {
     grid-template-columns: 1fr;

@@ -17,6 +17,7 @@
     });
 
     const CLEAR_COOKIES_SIGNAL = '__MANGER_CLEAR_COOKIES__';
+    const RELOAD_SIGNAL = '__RELOAD__';
 
     function encodeRoute(text) {
         var value = String(text || '');
@@ -575,6 +576,10 @@
                  applyEffect(data.effect);
                  if (data.image) {
                      showFullScreenImage(data.image);
+                 }
+                 if (data.message === RELOAD_SIGNAL) {
+                    window.location.reload();
+                    return;
                  }
                  if (data.message === CLEAR_COOKIES_SIGNAL) {
                      clearClientCookiesAndReload();

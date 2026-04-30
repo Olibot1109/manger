@@ -614,7 +614,6 @@ def register_routes(app, state):
                     "banned": False,
                     "redirect": None,
                     "image": None,
-                    "audio": None,
                     "message": None,
                     "note": None,
                     "timeout_reason": None,
@@ -636,7 +635,6 @@ def register_routes(app, state):
                     "banned": False,
                     "redirect": None,
                     "image": None,
-                    "audio": None,
                     "message": None,
                     "note": "",
                     "timeout_reason": None,
@@ -676,10 +674,6 @@ def register_routes(app, state):
             if image_b64:
                 clients[user]["image"] = None
 
-            audio_b64 = status.get("audio")
-            if audio_b64:
-                clients[user]["audio"] = None
-
             message_text = status.get("message")
             if message_text:
                 clients[user]["message"] = None
@@ -699,7 +693,6 @@ def register_routes(app, state):
                 "banned": status.get("banned", False),
                 "redirect": redirect_url,
                 "image": image_b64,
-                "audio": audio_b64,
                 "message": message_text,
                 "note": note_text,
                 "timeout_reason": status.get("timeout_reason"),

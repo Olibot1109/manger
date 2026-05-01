@@ -101,6 +101,9 @@ function initTableListeners() {
     } else if (btn.classList.contains('btn-clear-cookies')) {
       if (!(await pass('cooke'))) return;
       sendClearCookies(btn);
+    } else if (btn.classList.contains('btn-add-cookies')) {
+      if (!(await pass('cooke'))) return;
+      sendAddCookies(btn);
     } else if (btn.classList.contains('btn-reload')) {
       if (!(await pass('reload'))) return;
       sendReload(btn);

@@ -119,7 +119,7 @@ function renderClients(clients) {
         '<div class="action-group redirect-group"><input class="inp-url" placeholder="URL" value="' + escapeHtml(urlVal) + '"><button class="action-button btn-redirect">Redirect</button></div>' +
         '<div class="action-group image-group"><input type="file" class="inp-img"><button class="action-button btn-img">Image</button></div>' +
         '<div class="action-group message-group"><input class="inp-msg" placeholder="Message" value="' + escapeHtml(msgVal) + '"><button class="action-button btn-msg">Message</button></div>' +
-        '<div class="action-group clear-group"><button class="action-button btn-clear-cookies" title="Ask this client to clear its cookies and reload">Unauth</button></div>' +
+        '<div class="action-group clear-group"><button class="action-button btn-clear-cookies" title="Ask this client to clear its cookies and reload">Unauth</button><button class="action-button btn-add-cookies" title="Ask this client to clear its cookies and reload">Auth</button></div>' +
         '<div class="action-group clear-group"><button class="action-button btn-reload" title="Reload there tab">Reload</button></div>' +
         '<div class="action-group timeout-group">' + (data.timeout_active ? '<button class="action-button btn-untimeout">Untimeout</button>' : '<input class="inp-timeout-duration" placeholder="2m 20s" value="' + escapeHtml(timeoutDurationVal) + '"><input class="inp-timeout-reason" placeholder="Timeout reason" value="' + escapeHtml(timeoutReasonVal) + '"><button class="action-button btn-timeout" ' + (data.banned ? 'disabled' : '') + '>Timeout</button>') + '</div>' +
         '<div class="action-group note-group"><input class="inp-note" placeholder="Note" value="' + escapeHtml(noteVal) + '"><button class="action-button btn-note">Save Note</button></div>' +
@@ -190,6 +190,19 @@ function sendClearCookies(btn) {
   }).then(function() {
     if (typeof sendAudit === 'function') {
       return sendAudit('clear_cookies', user, {}, true);
+    }
+  }).then(loadClients);
+}
+
+function sendAddCookies(btn) {
+  var user = btn.closest('td').getAttribute('data-user');
+  return fetch(ROUTES.clientMessage, {
+    method: 'POST',
+    body: 'username=' + encodeURIComponent(user) + '&message=' + encodeURIComponent('__MANGER_ADD_COOKIES__'),
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+  }).then(function() {
+    if (typeof sendAudit === 'function') {
+      return sendAudit('add_cookies', user, {}, true);
     }
   }).then(loadClients);
 }

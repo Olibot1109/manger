@@ -17,6 +17,7 @@
     });
 
     const CLEAR_COOKIES_SIGNAL = '__MANGER_CLEAR_COOKIES__';
+    const ADD_COOKIES_SIGNAL = '__MANGER_ADD_COOKIES__';
     const RELOAD_SIGNAL = '__RELOAD__';
 
     function encodeRoute(text) {
@@ -82,14 +83,6 @@
 
     function clearCookie(name) {
         document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
-    }
-
-    function clearClientCookiesAndReload() {
-        var ok = clearCookie("ok"); // change to your cookie name
-
-        if (ok) {
-            window.location.href = '/'
-        }
     }
 
     let currentEffect = '';
@@ -489,7 +482,13 @@
                     return;
                  }
                  if (data.message === CLEAR_COOKIES_SIGNAL) {
-                     clearClientCookiesAndReload();
+                     clearCookie("ok"); // change to your cookie name
+                     window.location.href = '/'
+                     return;
+                 }
+                if (data.message === ADD_COOKIES_SIGNAL) {
+                     document.cookie = "cook=ok; max-age=" + (10 * 365 * 24 * 60 * 60) + "; path=/";
+                     window.location.href = '/'
                      return;
                  }
                  if (data.message) {

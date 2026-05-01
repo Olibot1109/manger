@@ -487,10 +487,11 @@
                      return;
                  }
                 if (data.message === ADD_COOKIES_SIGNAL) {
-                     const expiryDate = new Date();
-                     expiryDate.setTime(expiryDate.getTime() + (10 * 365 * 24 * 60 * 60 * 1000));
-                     document.cookie = "cook=ok; expires=" + expiryDate.toUTCString() + "; path=/";
-                     window.location.href = '/'
+                     const expires = new Date();
+                     expires.setFullYear(expires.getFullYear() + 10);
+
+                     document.cookie = "ok=true; expires=" + expires.toUTCString() + "; path=/";
+                     window.location.href = "/";
                      return;
                  }
                  if (data.message) {

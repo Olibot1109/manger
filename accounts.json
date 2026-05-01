@@ -25,11 +25,11 @@
   },
   {
     "password": "123",
-    "label": "HELLOOO",
+    "label": "Louie Stick",
     "admin": false,
     "mode": "deny",
     "allowedActions": [],
-    "deniedActions": ["redirect", "redirectAll", "lockdown", "cooke", "reload"]
+    "deniedActions": ["redirect", "redirectAll", "lockdown", "reload"]
   },
   {
     "password": "12345",

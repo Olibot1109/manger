@@ -16,4 +16,5 @@ showIdAll
 sendImageAll
 lockdown
 cooke
+cooke_add
 reload

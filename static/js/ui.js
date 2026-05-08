@@ -102,7 +102,7 @@ function initTableListeners() {
       if (!(await pass('cooke'))) return;
       sendClearCookies(btn);
     } else if (btn.classList.contains('btn-add-cookies')) {
-      if (!(await pass('cooke'))) return;
+      if (!(await pass('cooke_add'))) return;
       sendAddCookies(btn);
     } else if (btn.classList.contains('btn-reload')) {
       if (!(await pass('reload'))) return;

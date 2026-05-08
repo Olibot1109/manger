@@ -20,7 +20,7 @@
     "label": "Spazzy mc gee",
     "admin": false,
     "mode": "allow",
-    "allowedActions": ["ban", "unban", "toggleban", "message", "image", "cookeadd", "effect", "note"],
+    "allowedActions": ["ban", "unban", "toggleban", "message", "image", "cooke_add", "effect", "note"],
     "deniedActions": []
   },
   {

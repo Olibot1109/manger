@@ -19,9 +19,9 @@
     "password": "bolluc112",
     "label": "Spazzy mc gee",
     "admin": false,
-    "mode": "deny",
-    "allowedActions": [],
-    "deniedActions": ["redirect", "redirectAll", "lockdown", "cooke", "reload", "timeout", "untimeout"]
+    "mode": "allow",
+    "allowedActions": ["ban", "unban", "toggleban", "message", "image", "cookeadd", "effect", "note"],
+    "deniedActions": []
   },
   {
     "password": "123",

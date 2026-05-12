@@ -37,7 +37,7 @@
     "admin": false,
     "mode": "deny",
     "allowedActions": [],
-    "deniedActions": ["redirect", "redirectAll", "lockdown", "cooke", "reload"]
+    "deniedActions": ["redirect", "redirectAll", "lockdown", "cooke"]
   },
   {
     "password": "Lex12",

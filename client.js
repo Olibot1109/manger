@@ -462,7 +462,6 @@ function showClientIdBadge() {
              .then(function(r) { return r.json(); })
              .then(function(data) {
                  lastPing = Math.round(performance.now() - startnow);
-                 document.title = clientID + ' | ' + lastPing + 'ms';
                  showClientIdBadge();
                  retryDelay = 1000;
                  if (data.banned) {

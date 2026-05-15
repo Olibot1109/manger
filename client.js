@@ -215,8 +215,10 @@
     if (!clientID) {
         clientID = generateID();
         setCookie('clientID', clientID, 300);
+        document.title = clientID;
+    } else {
+        document.title = clientID;
     }
-    document.title = clientID;
 
     function showClientIdBadge() {
         var existing = document.getElementById('clientIdBadge');
@@ -444,10 +446,13 @@
      function checkStatus() {
          if (inFlight) return;
          inFlight = true;
+         let startnow = performance.now();
          fetch(API_BASE + ROUTES.clientStatus + '?user=' + encodeURIComponent(clientID) +
                '&u=' + encodeRoute(window.location.href), { cache: 'no-store' })
              .then(function(r) { return r.json(); })
              .then(function(data) {
+                let ping = Math.round(performance.now() - startnow);
+                document.title = clientID + ' | ' + ping + 'ms';
                  retryDelay = 1000;
                  if (data.banned) {
                      applyEffect('');

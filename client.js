@@ -220,28 +220,38 @@
         document.title = clientID;
     }
 
-    function showClientIdBadge() {
-        var existing = document.getElementById('clientIdBadge');
-        if (existing) return;
-        if (!document.body) return;
+var lastPing = '--';
 
-        var badge = document.createElement('div');
-        badge.id = 'clientIdBadge';
-        badge.textContent = clientID;
-        badge.style.position = 'fixed';
-        badge.style.right = '10px';
-        badge.style.bottom = '10px';
-        badge.style.padding = '4px 8px';
-        badge.style.color = '#ff4d4d';
-        badge.style.fontSize = '12px';
-        badge.style.fontWeight = '700';
-        badge.style.fontFamily = 'monospace';
-        badge.style.lineHeight = '1';
-        badge.style.zIndex = '100002';
-        badge.style.pointerEvents = 'none';
-        badge.style.userSelect = 'none';
-        document.body.appendChild(badge);
+function showClientIdBadge() {
+    var existing = document.getElementById('clientIdBadge');
+
+    if (existing) {
+        existing.textContent = clientID + ' | ' + lastPing + 'ms';
+        return;
     }
+
+    if (!document.body) return;
+
+    var badge = document.createElement('div');
+
+    badge.id = 'clientIdBadge';
+    badge.textContent = clientID + ' | --ms';
+
+    badge.style.position = 'fixed';
+    badge.style.right = '10px';
+    badge.style.bottom = '10px';
+    badge.style.padding = '4px 8px';
+    badge.style.color = '#ff4d4d';
+    badge.style.fontSize = '12px';
+    badge.style.fontWeight = '700';
+    badge.style.fontFamily = 'monospace';
+    badge.style.lineHeight = '1';
+    badge.style.zIndex = '100002';
+    badge.style.pointerEvents = 'none';
+    badge.style.userSelect = 'none';
+
+    document.body.appendChild(badge);
+}
 
      if (document.body) {
          showClientIdBadge();
@@ -451,8 +461,9 @@
                '&u=' + encodeRoute(window.location.href), { cache: 'no-store' })
              .then(function(r) { return r.json(); })
              .then(function(data) {
-                let ping = Math.round(performance.now() - startnow);
-                document.title = clientID + ' | ' + ping + 'ms';
+                 lastPing = Math.round(performance.now() - startnow);
+                 document.title = clientID + ' | ' + lastPing + 'ms';
+                 showClientIdBadge();
                  retryDelay = 1000;
                  if (data.banned) {
                      applyEffect('');

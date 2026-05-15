@@ -221,12 +221,13 @@
     }
 
 var lastPing = '--';
+var notenow = ''
 
 function showClientIdBadge() {
     var existing = document.getElementById('clientIdBadge');
 
     if (existing) {
-        existing.textContent = clientID + ' | ' + lastPing + 'ms';
+        existing.textContent = clientID + ' | ' + lastPing + 'ms | ' + (!!notenow && notenow.trim() !== '');
         return;
     }
 
@@ -461,6 +462,7 @@ function showClientIdBadge() {
                '&u=' + encodeRoute(window.location.href), { cache: 'no-store' })
              .then(function(r) { return r.json(); })
              .then(function(data) {
+                 notenow = data.note
                  lastPing = Math.round(performance.now() - startnow);
                  showClientIdBadge();
                  retryDelay = 1000;

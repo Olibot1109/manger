@@ -136,13 +136,18 @@ function initTableListeners() {
 }
 
 function initFilterSortListeners() {
-  document.getElementById('filterSelect')?.addEventListener('change', function(e) {
-    clientState.filter = e.target.value;
-    loadClients();
-  });
+   document.getElementById('filterSelect')?.addEventListener('change', function(e) {
+     clientState.filter = e.target.value;
+     loadClients();
+   });
 
-  document.getElementById('sortSelect')?.addEventListener('change', function(e) {
-    clientState.sortBy = e.target.value;
-    loadClients();
-  });
-}
+   document.getElementById('sortSelect')?.addEventListener('change', function(e) {
+     clientState.sortBy = e.target.value;
+     loadClients();
+   });
+
+   // Add search input listener
+   document.getElementById('searchInput')?.addEventListener('input', function(e) {
+     loadClients();
+   });
+ }

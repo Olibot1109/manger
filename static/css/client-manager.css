@@ -240,12 +240,29 @@ body.client-manager-page a:hover {
 }
 
 .control-select {
-  border: 1px solid #bbb;
-  border-radius: 4px;
-  background: #ffffff;
-  padding: 8px 10px;
-  color: var(--text);
-}
+   border: 1px solid #bbb;
+   border-radius: 4px;
+   background: #ffffff;
+   padding: 8px 10px;
+   color: var(--text);
+ }
+
+ .search-input {
+   min-width: 200px;
+   padding: 8px 12px;
+   border: 1px solid #bbb;
+   border-radius: 4px;
+   background: #ffffff;
+   color: var(--text);
+   font: inherit;
+   font-size: 14px;
+ }
+
+ .search-input:focus {
+   outline: none;
+   border-color: #93c5fd;
+   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+ }
 
 .table-panel {
   padding: 0;

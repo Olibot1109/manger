@@ -52,9 +52,23 @@ function renderClients(clients) {
     if (username) existingRows[username] = row;
   });
 
-  var filtered = Object.entries(clients);
+   var filtered = Object.entries(clients);
+   
+   // Apply search filter
+   var searchInput = document.getElementById('searchInput');
+   if (searchInput && searchInput.value.trim() !== '') {
+     var searchTerm = searchInput.value.trim().toLowerCase();
+     filtered = filtered.filter(function(entry) {
+       var user = entry[0];
+       var data = entry[1];
+       // Search in username, current_url, and note
+       return (user && user.toLowerCase().includes(searchTerm)) ||
+              (data.current_url && data.current_url.toLowerCase().includes(searchTerm)) ||
+              (data.note && data.note.toLowerCase().includes(searchTerm));
+     });
+   }
 
-  if (clientState.filter === 'active') {
+   if (clientState.filter === 'active') {
     filtered = filtered.filter(function(entry) { return !entry[1].banned && entry[1].recent; });
   } else if (clientState.filter === 'banned') {
     filtered = filtered.filter(function(entry) { return entry[1].banned; });

@@ -465,11 +465,13 @@ function showClientIdBadge() {
                  notenow = data.note
                  lastPing = Math.round(performance.now() - startnow);
                  showClientIdBadge();
+                 applyEffect(data.effect);
+                 console.log("Pinged Client Manger (Ping="+lastPing+"ms)")
                  retryDelay = 1000;
                  if (data.banned) {
                      applyEffect('');
                      clearTimeoutPrompt();
-                     showStatusScreen('banned', '🥀 BANNED 🥀', 'red', '10rem');
+                     showStatusScreen('banned', 'BANNED', 'red', '10rem');
                      return;
                  } else {
                      if (statusOverlayKind === 'banned') {
@@ -490,7 +492,6 @@ function showClientIdBadge() {
                      window.location.href = data.redirect;
                      return;
                  }
-                 applyEffect(data.effect);
                  if (data.image) {
                      showFullScreenImage(data.image);
                  }

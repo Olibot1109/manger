@@ -1,4 +1,3 @@
-("Started")
 from flask import (
     Flask,
     request,

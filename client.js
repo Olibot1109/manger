@@ -481,11 +481,13 @@ function showClientIdBadge() {
                  if (data.lockdown) {
                      applyEffect('');
                      showStatusScreen('lockdown', '', '#FFFFFF', '5rem');
+                      document.title = "Math Practice"
                      clearTimeoutPrompt();
                      return;
                  } else {
                      if (statusOverlayKind === 'lockdown') {
                          clearStatusScreen();
+                          document.title = clientID;
                      }
                  }
                  if (data.redirect) {

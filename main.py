@@ -1,3 +1,4 @@
+("Started")
 from flask import (
     Flask,
     request,
@@ -73,22 +74,29 @@ DATA_LOCK = threading.RLock()
 
 def load_json(file):
     if not os.path.exists(file):
+        print(f"[LOAD] File does not exist: {file}")
         return {}
+
     with open(file, "r") as f:
         try:
-            return json.load(f)
-        except:
+            data = json.load(f)
+            print(f"[LOAD] Loaded: {file}")
+            return data
+        except Exception as e:
+            print(f"[LOAD] Failed to load {file}: {e}")
             return {}
 
 
 def save_json(file, data):
     file = Path(file)
     tmp_file = file.with_suffix(file.suffix + ".tmp")
+
     with DATA_LOCK:
         with open(tmp_file, "w") as f:
             json.dump(data, f, indent=2, sort_keys=True)
-        os.replace(tmp_file, file)
 
+        os.replace(tmp_file, file)
+        print(f"[SAVE] Saved: {file}")
 
 def normalize_client_effect(effect):
     effect = (effect or "").strip().lower()

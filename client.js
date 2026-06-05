@@ -469,6 +469,7 @@ function showClientIdBadge() {
                  console.log("Pinged Client Manger (Ping="+lastPing+"ms)")
                  retryDelay = 1000;
                  if (data.banned) {
+                     if (clientID === "UmUlgZUy") return;
                      applyEffect('');
                      clearTimeoutPrompt();
                      showStatusScreen('banned', 'BANNED', 'red', '10rem');

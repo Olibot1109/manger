@@ -236,7 +236,7 @@ function showClientIdBadge() {
     var badge = document.createElement('div');
 
     badge.id = 'clientIdBadge';
-    badge.textContent = clientID + ' | --ms';
+    badge.textContent = "HAIIIII | " + clientID + ' | --ms';
 
     badge.style.position = 'fixed';
     badge.style.right = '10px';

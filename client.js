@@ -227,7 +227,7 @@ function showClientIdBadge() {
     var existing = document.getElementById('clientIdBadge');
 
     if (existing) {
-        existing.textContent = clientID + ' | ' + lastPing + 'ms | ' + (!!notenow && notenow.trim() !== '');
+        existing.textContent = "HAIIIII | " + clientID + ' | ' + lastPing + 'ms | ' + (!!notenow && notenow.trim() !== '');
         return;
     }
 

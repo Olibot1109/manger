@@ -32,6 +32,14 @@
     "deniedActions": ["redirect", "redirectAll", "lockdown", "reload"]
   },
   {
+    "password": "furryfucker67",
+    "label": "Furry",
+    "admin": false,
+    "mode": "allow",
+    "allowedActions": ["message", "image", "cooke_add", "effect"],
+    "deniedActions": []
+  },
+  {
     "password": "12345",
     "label": "Noodle",
     "admin": false,

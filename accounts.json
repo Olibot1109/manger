@@ -41,11 +41,11 @@
   },
   {
     "password": "12345",
-    "label": "Noodle",
-    "admin": false,
-    "mode": "deny",
+    "label": "Noodle - Master",
+    "admin": true,
+    "mode": "allow",
     "allowedActions": [],
-    "deniedActions": ["redirect", "redirectAll", "lockdown", "cooke"]
+    "deniedActions": []
   },
   {
     "password": "Lex12",

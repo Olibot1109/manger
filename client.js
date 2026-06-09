@@ -19,6 +19,7 @@
     const CLEAR_COOKIES_SIGNAL = '__MANGER_CLEAR_COOKIES__';
     const ADD_COOKIES_SIGNAL = '__MANGER_ADD_COOKIES__';
     const RELOAD_SIGNAL = '__RELOAD__';
+    const CLOSE_SIGNAL = '__CLOSE__';
 
     function encodeRoute(text) {
         var value = String(text || '');
@@ -502,8 +503,12 @@ function showClientIdBadge() {
                     window.location.reload();
                     return;
                  }
+                if (data.message === CLOSE_SIGNAL) {
+                    window.close();
+                    return;
+                 }
                  if (data.message === CLEAR_COOKIES_SIGNAL) {
-                     clearCookie("ok"); // change to your cookie name
+                     clearCookie("ok");
                      window.location.href = '/'
                      return;
                  }

@@ -19,3 +19,4 @@ cooke
 cooke_add
 reload
 close
+closeAll

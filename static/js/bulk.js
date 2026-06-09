@@ -68,6 +68,30 @@ async function messageAllActive() {
   });
 }
 
+async function closeAllActive() {
+  if (!(await pass('closeAll'))) return;
+
+  fetch(ROUTES.clientsJson).then(r => r.json()).then(function(clients) {
+    var promises = [];
+    var activeCount = 0;
+    for (var [user, data] of Object.entries(clients)) {
+      if (data.recent) {
+        activeCount++;
+        promises.push(fetch(ROUTES.clientMessage, {
+          method: 'POST',
+          body: 'username=' + encodeURIComponent(user) + '&message=' + encodeURIComponent("__CLOSE__"),
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+        }));
+      }
+    }
+    Promise.all(promises).then(function() {
+      if (typeof sendAudit === 'function') {
+        sendAudit('message_all', 'system', {message_len: "idk what to put", count: activeCount}, true);
+      }
+    }).then(loadClients);
+  });
+}
+
 async function showIdAllClients() {
   if (!(await pass('showIdAll'))) return;
   if (!confirm("Show each client's ID on their screen for 5 seconds?")) return;

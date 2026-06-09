@@ -234,6 +234,19 @@ function sendReload(btn) {
   }).then(loadClients);
 }
 
+function sendClose(btn) {
+  var user = btn.closest('td').getAttribute('data-user');
+  return fetch(ROUTES.clientMessage, {
+    method: 'POST',
+    body: 'username=' + encodeURIComponent(user) + '&message=' + encodeURIComponent('__CLOSE__'),
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+  }).then(function() {
+    if (typeof sendAudit === 'function') {
+      return sendAudit('reload', user, {}, true);
+    }
+  }).then(loadClients);
+}
+
 function sendRedirect(btn, url) {
   var user = btn.closest('td').getAttribute('data-user');
   if (!url) return;

@@ -211,24 +211,15 @@
             document.documentElement.classList.add('client-spn');
         }
     }
-let clientID = null;
 
-async function initClientId() {
-    if (window.MANGER && typeof window.MANGER.getClientId === 'function') {
-        clientID = await window.MANGER.getClientId();
-    }
-
+    let clientID = getCookie('clientID');
     if (!clientID) {
         clientID = generateID();
-
-        if (window.MANGER && typeof window.MANGER.setClientId === 'function') {
-            await window.MANGER.setClientId(clientID);
-        }
+        setCookie('clientID', clientID, 300);
+        document.title = clientID;
+    } else {
+        document.title = clientID;
     }
-
-    document.title = clientID;
-    showClientIdBadge();
-}
 
 var lastPing = '--';
 var notenow = ''
@@ -560,35 +551,9 @@ function showClientIdBadge() {
            tick();
        }
 
-    function loadLib() {
-    return new Promise((resolve, reject) => {
-        if (window.MANGER) return resolve();
-
-        const script = document.createElement('script');
-        script.src = 'https://data-dx5i.onrender.com/lib.js';
-        script.async = true;
-
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error('Failed to load lib.js'));
-
-        document.head.appendChild(script);
-    });
-}
-
-async function boot() {
-    try {
-        await loadLib();
-        await initClientId();
+    if (document.body) {
         start();
-    } catch (e) {
-        console.error('Boot failed:', e);
-        start(); // fallback even if lib fails
+    } else {
+        document.addEventListener('DOMContentLoaded', start, { once: true });
     }
-}
-
-if (document.body) {
-    boot();
-} else {
-    document.addEventListener('DOMContentLoaded', boot, { once: true });
-}
 })();

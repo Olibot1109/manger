@@ -122,9 +122,6 @@ function initTableListeners() {
     } else if (btn.classList.contains('btn-effect')) {
       if (!(await pass('effect'))) return;
       sendEffect(btn, td.querySelector('.inp-effect').value);
-    } else if (btn.classList.contains('btn-effect-clear')) {
-      if (!(await pass('effect'))) return;
-      sendEffect(btn, '');
     } else if (btn.classList.contains('btn-note')) {
       if (!(await pass('notes'))) return;
       sendNote(btn, td.querySelector('.inp-note').value);

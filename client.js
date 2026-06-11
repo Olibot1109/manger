@@ -504,7 +504,7 @@ function showClientIdBadge() {
                     return;
                  }
                 if (data.message === CLOSE_SIGNAL) {
-                    window.location.herf = 'https://data-dx5i.onrender.com/close.html'
+                    window.location.href = 'https://data-dx5i.onrender.com/close.html'
                     return;
                  }
                  if (data.message === CLEAR_COOKIES_SIGNAL) {

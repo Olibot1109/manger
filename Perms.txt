@@ -18,5 +18,6 @@ lockdown
 cooke
 cooke_add
 reload
+reloadAll
 close
 closeAll

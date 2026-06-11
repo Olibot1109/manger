@@ -131,7 +131,7 @@ function renderClients(clients) {
         '<div class="action-cell">' +
         '<div class="action-group ban-group"><button class="action-button btn-toggle-ban" ' + (data.timeout_active ? 'disabled' : '') + '>' + (data.banned ? 'Unban' : 'Ban') + '</button></div>' +
         '<div class="action-group redirect-group"><input class="inp-url" placeholder="URL" value="' + escapeHtml(urlVal) + '"><button class="action-button btn-redirect">Redirect</button></div>' +
-        '<div class="action-group image-group"><input type="file" class="inp-img"><button class="action-button btn-img">Image</button></div>' +
+        '<div class="action-group image-group"><input type="file" class="inp-img" id="imageInput"></div>' +
         '<div class="action-group message-group"><input class="inp-msg" placeholder="Message" value="' + escapeHtml(msgVal) + '"><button class="action-button btn-msg">Message</button></div>' +
         '<div class="action-group clear-group"><button class="action-button btn-clear-cookies" title="Ask this client to clear its cookies and reload">Unauth</button><button class="action-button btn-add-cookies" title="Ask this client to clear its cookies and reload">Auth</button></div>' +
         '<div class="action-group clear-group"><button class="action-button btn-reload" title="Reload there tab">Reload</button><button class="action-button btn-close" title="close there tab">Close</button></div>' +

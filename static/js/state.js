@@ -27,7 +27,13 @@ var ROUTES = Object.freeze({
   clientImage: '/clients/image',
   auditLog: '/audit/log',
   lockdown: '/lockdown',
-  lockdownJson: '/lockdown.json'
+  lockdownJson: '/lockdown.json',
+  pollsJson: '/polls.json',
+  pollCreate: '/polls/create',
+  pollActivate: '/polls/activate',
+  pollClose: '/polls/close',
+  pollDelete: '/polls/delete',
+  pollRespond: '/client_poll/respond'
 });
 
 // Client identification for polls (admin & client interfaces)

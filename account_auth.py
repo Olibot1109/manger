@@ -18,6 +18,10 @@ _ACCOUNT_CACHE = {"path": None, "mtime": None, "accounts": []}
 _ACTION_ALIASES = {
     "note": "notes",
     "notes": "notes",
+    "polls": "poll",
+    "poll": "poll",
+    "unabn": "unban",   # typo compat
+    "toggleBan": "toggleban",
 }
 
 

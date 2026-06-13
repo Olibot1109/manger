@@ -50,20 +50,30 @@
   <section class="table-panel">
     <div class="table-shell">
       <table id="clientsTable">
-        <tr>
-          <th>Username</th>
-          <th>Status</th>
-          <th>Last Ping</th>
-          <th>Current URL</th>
-          <th>Effect</th>
-          <th>Timeout</th>
-          <th>Actions</th>
-        </tr>
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Status</th>
+            <th>Last Ping</th>
+            <th>Current URL</th>
+            <th>Effect</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="clientsTableBody"></tbody>
       </table>
     </div>
   </section>
 
+  <section class="manager-panel polls-panel">
+    <div class="panel-heading">Polls</div>
+    <div id="polls-container">
+      <div style="color:#888;font-size:13px;">Loading polls...</div>
+    </div>
+  </section>
+
   <section class="manager-panel">
+    <div class="panel-heading">Bulk Actions</div>
     <div class="manager" id="image_manager_global">
       <button class="entry entry-green" onclick="redirectAllActive()">
         Redirect All Active Clients
@@ -96,6 +106,7 @@
 <script src="/static/js/auth.js"></script>
 <script src="/static/js/clients.js"></script>
 <script src="/static/js/bulk.js"></script>
+<script src="/static/js/polls.js"></script>
 <script src="/static/js/ui.js"></script>
 <script src="/static/js/main.js"></script>
 </body>

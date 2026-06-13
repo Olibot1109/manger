@@ -7,7 +7,10 @@ function toggleAutoRefresh() {
     btn.textContent = 'Stop Auto';
     btn.classList.add('auto-active');
     if (refreshTimer) clearInterval(refreshTimer);
-    refreshTimer = setInterval(loadClients, 3000);
+    refreshTimer = setInterval(function() {
+      if (document.visibilityState !== 'visible') return;
+      loadClients();
+    }, 3000);
   } else {
     btn.textContent = 'Auto Refresh';
     btn.classList.remove('auto-active');
@@ -136,18 +139,19 @@ function initTableListeners() {
 }
 
 function initFilterSortListeners() {
-   document.getElementById('filterSelect')?.addEventListener('change', function(e) {
-     clientState.filter = e.target.value;
-     loadClients();
-   });
+  document.getElementById('filterSelect')?.addEventListener('change', function(e) {
+    clientState.filter = e.target.value;
+    applyRender();
+  });
 
-   document.getElementById('sortSelect')?.addEventListener('change', function(e) {
-     clientState.sortBy = e.target.value;
-     loadClients();
-   });
+  document.getElementById('sortSelect')?.addEventListener('change', function(e) {
+    clientState.sortBy = e.target.value;
+    applyRender();
+  });
 
-   // Add search input listener
-   document.getElementById('searchInput')?.addEventListener('input', function(e) {
-     loadClients();
-   });
- }
+  var searchDebounce = null;
+  document.getElementById('searchInput')?.addEventListener('input', function() {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(applyRender, 150);
+  });
+}

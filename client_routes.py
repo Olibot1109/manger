@@ -2,6 +2,7 @@ from base64 import b64encode
 from datetime import datetime
 from html import escape
 from pathlib import Path
+import json as _json
 import re
 import time
 import uuid
@@ -114,6 +115,32 @@ def register_routes(app, state):
     accounts_path = state.get("accounts_json_path")
     cookie_secure = bool(app.config.get("SESSION_COOKIE_SECURE"))
 
+    polls_json_path = BASE_DIR / "polls.json"
+    _hb_save_at = [0.0]  # timestamp of last heartbeat-only save
+
+    with data_lock:
+        if polls_json_path.exists():
+            try:
+                with open(polls_json_path) as _f:
+                    polls_data = _json.load(_f)
+                # Migrate old single-ID format to list
+                if "active_poll_id" in polls_data:
+                    old_id = polls_data.pop("active_poll_id")
+                    polls_data.setdefault("active_poll_ids", [])
+                    if old_id and old_id not in polls_data["active_poll_ids"]:
+                        polls_data["active_poll_ids"].append(old_id)
+                    save_json(polls_json_path, polls_data)
+                polls_data.setdefault("active_poll_ids", [])
+                polls_data.setdefault("polls", {})
+            except Exception:
+                polls_data = {"active_poll_ids": [], "polls": {}}
+        else:
+            polls_data = {"active_poll_ids": [], "polls": {}}
+            save_json(polls_json_path, polls_data)
+
+    def save_polls():
+        save_json(polls_json_path, polls_data)
+
     def audit_log(performer, action, target="system", details=None, success=True):
         if audit_mod:
             try:
@@ -182,6 +209,12 @@ def register_routes(app, state):
         now = datetime.utcnow()
         with data_lock:
             snapshot = dict(clients)
+            _active_ids = polls_data.get("active_poll_ids", [])
+            _poll_responses = {}  # user -> [answer, ...]
+            for _pid in _active_ids:
+                if _pid in polls_data["polls"]:
+                    for _u, _ans in polls_data["polls"][_pid].get("responses", {}).items():
+                        _poll_responses.setdefault(_u, []).append(_ans)
         clients_display = {}
         for user, data in snapshot.items():
             last_ping = data.get("last_ping")
@@ -216,6 +249,7 @@ def register_routes(app, state):
             clients_display[user] = {**data, "recent": recent}
             clients_display[user]["timeout_remaining_seconds"] = timeout_remaining
             clients_display[user]["timeout_active"] = timeout_active
+            clients_display[user]["poll_answers"] = _poll_responses.get(user, [])
         resp = jsonify(clients_display)
         resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         resp.headers["Pragma"] = "no-cache"
@@ -699,10 +733,27 @@ def register_routes(app, state):
             clients[user]["last_ping"] = last_ping
             clients[user]["current_url"] = current_url or status.get("current_url")
 
-            save_json(clients_json_path, clients)
+            # Only flush to disk if something real changed or >20s since last heartbeat write
+            _real_change = bool(redirect_url or image_b64 or message_text)
+            _now = time.time()
+            if _real_change or (_now - _hb_save_at[0]) >= 20:
+                save_json(clients_json_path, clients, _silent=not _real_change)
+                _hb_save_at[0] = _now
+
+            _active_ids = polls_data.get("active_poll_ids", [])
+            pending_polls = []
+            for _pid in _active_ids:
+                if _pid in polls_data["polls"]:
+                    _apoll = polls_data["polls"][_pid]
+                    if user not in _apoll.get("responses", {}):
+                        pending_polls.append({
+                            "id": _pid,
+                            "question": _apoll["question"],
+                            "options": _apoll["options"],
+                        })
 
             lockdown_active = lockdown_state["active"]
-            
+
         return jsonify(
             {
                 "banned": status.get("banned", False),
@@ -720,6 +771,7 @@ def register_routes(app, state):
                 "last_ping": last_ping,
                 "current_url": clients[user]["current_url"],
                 "lockdown": lockdown_active,
+                "polls": pending_polls,
             }
         )
 
@@ -744,8 +796,110 @@ def register_routes(app, state):
 
     @app.route("/lockdown.json")
     def lockdown_status():
-        return jsonify(
-            {
-                "active": lockdown_state["active"]
+        return jsonify({"active": lockdown_state["active"]})
+
+    @app.route("/polls.json")
+    def polls_json_route():
+        account, error = require_auth()
+        if error:
+            return error
+        with data_lock:
+            result = {
+                "active_poll_ids": polls_data["active_poll_ids"],
+                "polls": {pid: {**p} for pid, p in polls_data["polls"].items()},
             }
-        )
+        return jsonify(result)
+
+    @app.route("/polls/create", methods=["POST"])
+    def poll_create():
+        account, error = require_auth("poll")
+        if error:
+            return error
+        question = request.form.get("question", "").strip()
+        if not question:
+            return jsonify({"error": "Question required"}), 400
+        options = []
+        for i in range(1, 5):
+            opt = request.form.get(f"option{i}", "").strip()
+            if opt:
+                options.append(opt)
+        if len(options) < 2:
+            return jsonify({"error": "At least 2 options required"}), 400
+        poll_id = str(uuid.uuid4())[:8]
+        with data_lock:
+            if len(polls_data["active_poll_ids"]) >= 2:
+                return jsonify({"error": "Max 2 active polls at a time — close one first"}), 400
+            polls_data["polls"][poll_id] = {
+                "id": poll_id,
+                "question": question,
+                "options": options,
+                "created_at": time.time(),
+                "created_by": account["label"],
+                "responses": {},
+            }
+            polls_data["active_poll_ids"].append(poll_id)
+            save_polls()
+        audit_log(account["label"], "poll_create", "system", {"question": question, "options": options}, True)
+        return jsonify({"ok": True, "id": poll_id})
+
+    @app.route("/polls/activate", methods=["POST"])
+    def poll_activate():
+        account, error = require_auth("poll")
+        if error:
+            return error
+        poll_id = request.form.get("poll_id", "").strip()
+        with data_lock:
+            if poll_id not in polls_data["polls"]:
+                return jsonify({"error": "Poll not found"}), 404
+            if poll_id not in polls_data["active_poll_ids"]:
+                if len(polls_data["active_poll_ids"]) >= 2:
+                    return jsonify({"error": "Max 2 active polls at a time — close one first"}), 400
+                polls_data["active_poll_ids"].append(poll_id)
+            save_polls()
+        audit_log(account["label"], "poll_activate", poll_id, {}, True)
+        return jsonify({"ok": True})
+
+    @app.route("/polls/close", methods=["POST"])
+    def poll_close():
+        account, error = require_auth("poll")
+        if error:
+            return error
+        poll_id = request.form.get("poll_id", "").strip()
+        with data_lock:
+            if poll_id:
+                polls_data["active_poll_ids"] = [p for p in polls_data["active_poll_ids"] if p != poll_id]
+            else:
+                polls_data["active_poll_ids"] = []
+            save_polls()
+        audit_log(account["label"], "poll_close", poll_id or "all", {}, True)
+        return jsonify({"ok": True})
+
+    @app.route("/polls/delete", methods=["POST"])
+    def poll_delete():
+        account, error = require_auth("poll")
+        if error:
+            return error
+        poll_id = request.form.get("poll_id", "").strip()
+        with data_lock:
+            polls_data["polls"].pop(poll_id, None)
+            polls_data["active_poll_ids"] = [p for p in polls_data["active_poll_ids"] if p != poll_id]
+            save_polls()
+        audit_log(account["label"], "poll_delete", poll_id, {}, True)
+        return jsonify({"ok": True})
+
+    @app.route("/client_poll/respond", methods=["POST"])
+    def poll_respond():
+        user = request.form.get("user", "").strip()
+        poll_id = request.form.get("poll_id", "").strip()
+        answer = request.form.get("answer", "").strip()
+        if not user or not poll_id or not answer:
+            return jsonify({"error": "Missing fields"}), 400
+        with data_lock:
+            poll = polls_data["polls"].get(poll_id)
+            if not poll:
+                return jsonify({"error": "Poll not found"}), 404
+            if answer not in poll["options"]:
+                return jsonify({"error": "Invalid answer"}), 400
+            poll["responses"][user] = answer
+            save_polls()
+        return jsonify({"ok": True})

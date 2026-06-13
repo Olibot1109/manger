@@ -18,8 +18,36 @@ from werkzeug.utils import secure_filename
 from flask_cors import CORS
 from datetime import datetime, timedelta
 import base64
+import logging
 import requests
 import audit as audit_mod
+
+# ── Colored logger ────────────────────────────────────────────────────────────
+_R = '\033[0m'; _B = '\033[1m'; _D = '\033[2m'
+_C = {'g': '\033[92m', 'y': '\033[93m', 'r': '\033[91m', 'c': '\033[96m', 'x': '\033[90m', 'p': '\033[95m', 'b': '\033[94m'}
+
+class _MFmt(logging.Formatter):
+    _LV = {logging.DEBUG: '\033[90m', logging.INFO: '\033[96m', logging.WARNING: '\033[93m', logging.ERROR: '\033[91m', logging.CRITICAL: '\033[91m' + '\033[1m'}
+    def format(self, r):
+        ts = self.formatTime(r, '%H:%M:%S')
+        c = self._LV.get(r.levelno, '')
+        tag = f'{c}{_B}{r.levelname[:4]}{_R}'
+        name = f' {_D}{r.name}{_R}' if r.name != 'manger' else ''
+        return f'{_D}{ts}{_R} {tag}{name}  {r.getMessage()}'
+
+_mh = logging.StreamHandler()
+_mh.setFormatter(_MFmt())
+log = logging.getLogger('manger')
+log.setLevel(logging.DEBUG)
+log.addHandler(_mh)
+log.propagate = False
+
+# Suppress repetitive Werkzeug access lines for high-frequency polling routes
+_QUIET_PATHS = frozenset({'/client_status', '/stats', '/lockdown.json', '/polls.json', '/auth/session', '/clients.json'})
+class _WzFilter(logging.Filter):
+    def filter(self, r):
+        return not any(p in r.getMessage() for p in _QUIET_PATHS)
+logging.getLogger('werkzeug').addFilter(_WzFilter())
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -73,29 +101,27 @@ DATA_LOCK = threading.RLock()
 
 def load_json(file):
     if not os.path.exists(file):
-        print(f"[LOAD] File does not exist: {file}")
+        log.debug(f'load  {Path(file).name}  (not found, using empty)')
         return {}
-
     with open(file, "r") as f:
         try:
             data = json.load(f)
-            print(f"[LOAD] Loaded: {file}")
+            log.info(f'{_C["c"]}load{_R}  {_B}{Path(file).name}{_R}')
             return data
         except Exception as e:
-            print(f"[LOAD] Failed to load {file}: {e}")
+            log.error(f'load  {Path(file).name}  failed: {e}')
             return {}
 
 
-def save_json(file, data):
+def save_json(file, data, _silent=False):
     file = Path(file)
     tmp_file = file.with_suffix(file.suffix + ".tmp")
-
     with DATA_LOCK:
         with open(tmp_file, "w") as f:
             json.dump(data, f, indent=2, sort_keys=True)
-
         os.replace(tmp_file, file)
-        print(f"[SAVE] Saved: {file}")
+    if not _silent:
+        log.info(f'{_C["g"]}save{_R}  {_B}{file.name}{_R}')
 
 def normalize_client_effect(effect):
     effect = (effect or "").strip().lower()
@@ -125,6 +151,7 @@ HOME_HTML = """
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="/static/css/home.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="http://localhost:5001/client_script.js"></script>
 </head>
 <body>
 <h1>Oli's API</h1>

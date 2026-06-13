@@ -13,7 +13,7 @@
     "admin": false,
     "mode": "deny",
     "allowedActions": [],
-    "deniedActions": ["redirect", "redirectAll", "lockdown", "cooke", "reload"]
+    "deniedActions": ["redirect", "redirectAll", "lockdown", "cooke", "reload", "reloadAll", "close", "closeAll", "poll"]
   },
   {
     "password": "bolluc112",
@@ -26,10 +26,10 @@
   {
     "password": "123",
     "label": "Louie Stick - Master",
-    "admin": true,
+    "admin": false,
     "mode": "deny",
     "allowedActions": [],
-    "deniedActions": ["redirect", "redirectAll", "lockdown", "reload"]
+    "deniedActions": ["redirect", "redirectAll", "lockdown", "reload", "cooke", "reloadAll", "close", "closeAll"]
   },
   {
     "password": "furryfucker67",

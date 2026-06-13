@@ -1,12 +1,10 @@
 // Main initialization
 
 function init() {
-  // Initialize UI
   initTableListeners();
   initFilterSortListeners();
   updateAuthStatus();
 
-  // Sync the server session in the background and keep it fresh.
   if (typeof bootstrapAuthState === 'function') {
     bootstrapAuthState().then(function() {
       if (!isSessionValid()) {
@@ -14,6 +12,7 @@ function init() {
       }
     }).catch(function() {});
     setInterval(function() {
+      if (document.visibilityState !== 'visible') return;
       refreshAuthState(true).catch(function() {});
     }, 3000);
   } else {
@@ -21,7 +20,15 @@ function init() {
   }
 
   updateLockdownBtn();
-  setInterval(updateLockdownBtn, 3000);
+  if (typeof loadPolls === 'function') loadPolls().catch(function() {});
+
+  // When tab becomes visible again, force a fresh fetch immediately
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+      _pollInFlight = false;
+      loadClients().catch(function() {});
+    }
+  });
 }
 
 if (document.readyState === 'loading') {
